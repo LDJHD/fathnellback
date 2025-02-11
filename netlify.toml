@@ -1,0 +1,6 @@
+[build]
+  functions = "netlify/functions"
+  publish = "dist"  # Si tu veux publier des fichiers statiques
+
+[build.environment]
+  NODE_VERSION = "16"  # Choisis la version de Node.js que tu utilises
