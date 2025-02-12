@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { connecter } = require('./bd/connect');
@@ -8,11 +9,10 @@ const envoyerEmail = require('./controller/mailer');
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:5173', // Permet les requêtes depuis le frontend
+    origin: process.env.FRONTEND_URL, // Permet les requêtes depuis le frontend
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 
 // Connexion à la base de données
 connecter((erreur) => {
@@ -49,14 +49,9 @@ const routes = [
 
 routes.forEach(route => app.use("/api/v1", route));
 
-// Servir les fichiers PDF dans le dossier "factures"
+// Servir les fichiers PDF
 app.use("/factures", express.static(path.join(__dirname, "factures")));
-
-// Servir les fichiers PDF dans le dossier "factures"
 app.use("/pdf", express.static(path.join(__dirname, "pdf")));
-
-
-// Servir les fichiers PDF dans le dossier "invoices"
 app.use("/invoices", express.static(path.join(__dirname, "invoices")));
 
 // Route pour envoyer un email
