@@ -6,6 +6,7 @@
   directory = "netlify/functions"  # Dossier où tu stockes tes fonctions
 
 [context.production.environment]
+<<<<<<< HEAD
   DB_HOST = "http://www.aldipeong.org/"
   DB_USER = "weziza_aldipetest"
   DB_PASSWORD = "zPYLfABSt987Bmyr3bpt"
@@ -13,3 +14,12 @@
   FRONTEND_URL = "https://front-fgczxnzr4-ldjhds-projects.vercel.app/"
   SENDGRID_API_KEY = "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"
   SENDGRID_EMAIL = "contacttoconnect2022@gmail.com"
+=======
+
+
+DB_HOST=srv1514.hstgr.io
+DB_USER=u249205154_topzen
+DB_PASSWORD=Topzen2025@
+DB_NAME=u249205154_topzen
+FRONTEND_URL=https://front-fgczxnzr4-ldjhds-projects.vercel.app/
+>>>>>>> master

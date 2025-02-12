@@ -1,3 +1,5 @@
+require('dotenv').config();
+console.log('DB_HOST:', process.env.DB_HOST);
 const serverless = require('serverless-http');
 const express = require('express');
 const cors = require('cors');
