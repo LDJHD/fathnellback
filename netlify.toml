@@ -1,6 +1,9 @@
 [build]
-  command = "npm install && npm run build"
-  publish = "dist"
+  command = "npm install"
+  publish = "public"  # Si tu as un dossier public avec des fichiers statiques à déployer
+
+[functions]
+  directory = "netlify/functions"  # Dossier où tu stockes tes fonctions
 
 [context.production.environment]
   DB_HOST = "http://www.aldipeong.org/"
