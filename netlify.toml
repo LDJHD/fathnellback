@@ -1,15 +1,14 @@
+# Configuration de Netlify
 [build]
-  command = "npm install"
-  publish = "public"  # Si tu as un dossier public avec des fichiers statiques à déployer
+  # Commande pour installer les dépendances et construire le projet
+  command = "npm install && npm run build"
+  # Dossier de publication où Netlify trouvera les fichiers à déployer
+  publish = "build"  # ou "dist" si c'est le cas dans ton projet
 
-[functions]
-  directory = "netlify/functions"  # Dossier où tu stockes tes fonctions
-
+# Variables d'environnement pour la production
 [context.production.environment]
-
-
-DB_HOST=srv1514.hstgr.io
-DB_USER=u249205154_topzen
-DB_PASSWORD=Topzen2025@
-DB_NAME=u249205154_topzen
-FRONTEND_URL=https://front-fgczxnzr4-ldjhds-projects.vercel.app/
+  DB_HOST = "srv1514.hstgr.io"
+  DB_USER = "u249205154_topzen"
+  DB_PASSWORD = "Topzen2025@"
+  DB_NAME = "u249205154_topzen"
+  FRONTEND_URL = "https://front-fgczxnzr4-ldjhds-projects.vercel.app/"
