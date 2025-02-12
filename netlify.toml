@@ -1,6 +1,15 @@
 [build]
-  functions = "netlify/functions"
-  publish = "dist"  # Si tu veux publier des fichiers statiques
+  command = "npm install"
+  publish = "public"  # Si tu as un dossier public avec des fichiers statiques à déployer
 
-[build.environment]
-  NODE_VERSION = "16"  # Choisis la version de Node.js que tu utilises
+[functions]
+  directory = "netlify/functions"  # Dossier où tu stockes tes fonctions
+
+[context.production.environment]
+
+
+DB_HOST=srv1514.hstgr.io
+DB_USER=u249205154_topzen
+DB_PASSWORD=Topzen2025@
+DB_NAME=u249205154_topzen
+FRONTEND_URL=https://front-fgczxnzr4-ldjhds-projects.vercel.app/
