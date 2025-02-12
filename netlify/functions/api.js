@@ -4,7 +4,7 @@ const cors = require('cors');
 const { connecter } = require('./bd/connect');
 const app = express();
 
-const envoyerEmail = require('./controller/mailer');
+// const envoyerEmail = require('./controller/mailer');
 
 // Middleware
 app.use(cors({
@@ -45,12 +45,12 @@ const routes = [
 
 routes.forEach(route => app.use("/api/v1", route));
 
-// Route pour envoyer un email
-app.post('/envoyerEmail', (req, res) => {
-    const { to, subject, body } = req.body;
-    envoyerEmail(to, subject, body);
-    res.status(200).json({ message: 'Email envoyé avec succès!' });
-});
+// // Route pour envoyer un email
+// app.post('/envoyerEmail', (req, res) => {
+//     const { to, subject, body } = req.body;
+//     envoyerEmail(to, subject, body);
+//     res.status(200).json({ message: 'Email envoyé avec succès!' });
+// });
 
 // Exporter pour Netlify
 module.exports.handler = serverless(app);
