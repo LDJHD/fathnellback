@@ -5,11 +5,9 @@ const { connecter } = require('./bd/connect');
 const app = express();
 const path = require("path");
 
-// const envoyerEmail = require('./controller/mailer');
-
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL, // Permet les requêtes depuis le frontend
+    origin: process.env.FRONTEND_URL,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -27,24 +25,24 @@ connecter((erreur) => {
     }
 });
 
-// Routes API
+// Chargement des routes avec path.resolve
 const routes = [
-    require("./route/utilisateur"),
-    require("./route/client"),
-    require("./route/categorie"),
-    require("./route/detailcommande"),
-    require("./route/facture"),
-    require("./route/facturation"),
-    require("./route/fournisseur"),
-    require("./route/produit"),
-    require("./route/stock"),
-    require("./route/vente"),
-    require("./route/mail"),
-    require("./route/login"),
-    require("./route/deconnexion"),
-    require("./route/pdfRoutes"),
-    require("./route/invoice"),
-    require("./route/supplement"),
+    require(path.resolve(__dirname, "../route/utilisateur")),
+    require(path.resolve(__dirname, "../route/client")),
+    require(path.resolve(__dirname, "../route/categorie")),
+    require(path.resolve(__dirname, "../route/detailcommande")),
+    require(path.resolve(__dirname, "../route/facture")),
+    require(path.resolve(__dirname, "../route/facturation")),
+    require(path.resolve(__dirname, "../route/fournisseur")),
+    require(path.resolve(__dirname, "../route/produit")),
+    require(path.resolve(__dirname, "../route/stock")),
+    require(path.resolve(__dirname, "../route/vente")),
+    require(path.resolve(__dirname, "../route/mail")),
+    require(path.resolve(__dirname, "../route/login")),
+    require(path.resolve(__dirname, "../route/deconnexion")),
+    require(path.resolve(__dirname, "../route/pdfRoutes")),
+    require(path.resolve(__dirname, "../route/invoice")),
+    require(path.resolve(__dirname, "../route/supplement")),
 ];
 
 routes.forEach(route => app.use("/api/v1", route));
@@ -53,12 +51,5 @@ routes.forEach(route => app.use("/api/v1", route));
 app.use("/factures", express.static(path.join(__dirname, "factures")));
 app.use("/pdf", express.static(path.join(__dirname, "pdf")));
 app.use("/invoices", express.static(path.join(__dirname, "invoices")));
-
-// Route pour envoyer un email
-// app.post('/envoyerEmail', (req, res) => {
-//     const { to, subject, body } = req.body;
-//     envoyerEmail(to, subject, body);
-//     res.status(200).json({ message: 'Email envoyé avec succès!' });
-// });
 
 module.exports = app;
