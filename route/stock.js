@@ -6,7 +6,8 @@ const {
     listallStock,
     detailStock,
     deleteStock,
-    updateStock
+    updateStock,
+    valeurStock
 } = require('../controller/stock');
 const authenticateToken = require('../middleware/auth');
 const router = express.Router();
@@ -16,5 +17,5 @@ router.get('/stock/listall',authenticateToken, listallStock);
 router.post('/stock/detailById',authenticateToken, detailStock);
 router.post('/stock/delete',authenticateToken,deleteStock);
 router.post('/stock/update',authenticateToken, updateStock);
-
+router.post('/stock/valeur',authenticateToken, valeurStock);
 module.exports = router;

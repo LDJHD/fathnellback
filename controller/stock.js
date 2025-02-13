@@ -163,6 +163,88 @@ const detailStock = async (req, res) => {
 };
 
 
+// const valeurStock = async (req, res) => {
+//     try {
+//         const { id } = req.body;
+
+//         connecter((error, connection) => {
+//             if (error) {
+//                 console.error("Erreur lors de la connexion à la base de données :", error);
+//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+//             }
+
+//             connection.query('SELECT quantite_stock FROM stock WHERE produit_id = ?', [id], (erreur, result) => {
+//                 if (erreur) {
+//                     console.error("Erreur lors de la récupération de la quantité en stock :", erreur);
+//                     return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité en stock" });
+//                 }
+
+//                 if (result.length === 0) {
+//                     return res.status(404).json({ erreur: "Aucune donnée trouvée pour cet ID de produit" });
+//                 }
+
+//                 return res.status(200).json({ quantite_stock: result[0].quantite_stock });
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
+
+const valeurStock = async (req, res) => {
+    try {
+        const { id } = req.body;
+
+        connecter((error, connection) => {
+            if (error) {
+                console.error("Erreur lors de la connexion à la base de données :", error);
+                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            }
+
+            // Effectuer une requête pour obtenir la quantité en stock de la table stock
+            connection.query('SELECT quantite_stock FROM stock WHERE produit_id = ?', [id], (erreur, resultStock) => {
+                if (erreur) {
+                    console.error("Erreur lors de la récupération de la quantité en stock :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité en stock" });
+                }
+
+                if (resultStock.length === 0) {
+                    return res.status(404).json({ erreur: "Aucune donnée trouvée pour cet ID de produit dans la table stock" });
+                }
+
+                // Quantité en stock de la table stock
+                const quantiteStock = resultStock[0].quantite_stock;
+
+                // Effectuer une requête pour obtenir la quantité vendue dans la table detail_vente
+                connection.query('SELECT SUM(quantite) AS quantite_vendue FROM details_vente WHERE produit_id = ?', [id], (erreur, resultVente) => {
+                    if (erreur) {
+                        console.error("Erreur lors de la récupération de la quantité vendue :", erreur);
+                        return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité vendue" });
+                    }
+
+                    // Si aucune vente n'a été enregistrée, la quantité vendue sera 0
+                    const quantiteVendue = resultVente[0].quantite_vendue || 0;
+
+                    // Calculer le stock restant
+                    const stockRestant = quantiteStock - quantiteVendue;
+
+                    // Retourner la quantité en stock et la quantité vendue
+                    return res.status(200).json({
+                        quantite_stock: quantiteStock,
+                        quantite_vendue: quantiteVendue,
+                        stock_restant: stockRestant,
+                    });
+                });
+            });
+        });
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return res.status(500).json({ erreur: "Erreur serveur" });
+    }
+};
+
+
 
 const deleteStock = async (req, res) => {
     try {
@@ -234,5 +316,6 @@ module.exports = {
     listallStock,
     detailStock,
     deleteStock,
-    updateStock
+    updateStock,
+    valeurStock
 };

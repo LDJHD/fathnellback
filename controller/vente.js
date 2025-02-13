@@ -33,70 +33,300 @@ const ajouterVente = async (req, res) => {
     }
 }
 
+// const ajouterTransaction = async (req, res) => {
+//     const { montant_total, client_id, items, facture, pdf,pdf2 } = req.body;
+//     const date = new Date();
+
+//     try {
+//         // Vérification de la structure des items (tableau d'objets)
+//         if (!Array.isArray(items) || items.length === 0) {
+//             return res.status(400).json({ erreur: "Les éléments de la vente doivent être un tableau." });
+//         }
+
+//         // Connexion à la base de données avec un pool
+//         connecter((error, connection) => {
+//             if (error) {
+//                 return res.status(500).json({ erreur: "Erreur de connexion à la base de données." });
+//             }
+
+//             // Commencer une transaction
+//             connection.beginTransaction(async (err) => {
+//                 if (err) {
+//                     return res.status(500).json({ erreur: "Erreur de début de transaction." });
+//                 }
+
+//                 try {
+//                     // 1. Insérer la vente
+//                     const vente = {
+//                         montant_total,
+//                         client_id,
+//                         created_at: date,
+//                         updated_at: date,
+//                     };
+
+//                     connection.query('INSERT INTO vente SET ?', vente, (insertErr, insertResult) => {
+//                         if (insertErr) {
+//                             return connection.rollback(() => {
+//                                 return res.status(500).json({ erreur: "Erreur lors de l'insertion de la vente." });
+//                             });
+//                         }
+
+//                         const vente_id = insertResult.insertId;
+
+//                         // 2. Insérer les détails de la vente (items)
+//                         const detailsPromises = items.map((item) => {
+//                             const detailsvente = {
+//                                 vente_id,
+//                                 produit_id: item.produit_id,
+//                                 quantite: item.quantite,
+//                                 prix_unitaire: item.prix_unitaire,
+//                                 created_at: date,
+//                                 updated_at: date,
+//                             };
+//                             return new Promise((resolve, reject) => {
+//                                 connection.query('INSERT INTO details_vente SET ?', detailsvente, (err) => {
+//                                     if (err) {
+//                                         return reject(err);
+//                                     }
+//                                     resolve();
+//                                 });
+//                             });
+//                         });
+
+//                         // Attendre l'insertion de tous les détails de vente
+//                         Promise.all(detailsPromises)
+//                             .then(() => {
+//                                 // 3. Insérer la facture
+//                                 const factureData = {
+//                                     vente_id,
+//                                     montant_total: facture.montant_total,
+//                                     tva: facture.tva,
+//                                     remise: facture.remise || 0,
+//                                     montant_paye: facture.montant_paye,
+//                                     montant_restant: facture.montant_restant,
+//                                     mode_paiement: facture.mode_paiement,
+//                                     client_id,
+//                                     created_at: date,
+//                                     updated_at: date,
+//                                 };
+
+//                                 connection.query('INSERT INTO facture SET ?', factureData, (factureErr, factureResult) => {
+//                                     if (factureErr) {
+//                                         return connection.rollback(() => {
+//                                             return res.status(500).json({ erreur: "Erreur lors de l'insertion de la facture." });
+//                                         });
+//                                     }
+
+//                                     const facture_id = factureResult.insertId;
+
+//                                     // 4. Enregistrer la facturation PDF
+//                                     const facturation = {
+//                                         facture_id,
+//                                         pdf,
+//                                         pdf2,
+//                                         created_at: date,
+//                                         updated_at: date,
+//                                     };
+
+//                                     connection.query('INSERT INTO facturation SET ?', facturation, (facturationErr) => {
+//                                         if (facturationErr) {
+//                                             return connection.rollback(() => {
+//                                                 return res.status(500).json({ erreur: "Erreur lors de l'enregistrement de la facturation PDF." });
+//                                             });
+//                                         }
+
+//                                         // 5. Commit de la transaction
+//                                         connection.commit((commitErr) => {
+//                                             if (commitErr) {
+//                                                 return connection.rollback(() => {
+//                                                     return res.status(500).json({ erreur: "Erreur lors du commit de la transaction." });
+//                                                 });
+//                                             }
+
+//                                             // Réussite, transaction terminée
+
+//                                             return res.status(200).json({ message: "Transaction effectuée avec succès." });
+//                                         });
+//                                     });
+//                                 });
+//                             })
+//                             .catch((err) => {
+//                                 // Erreur lors de l'insertion des détails de la vente
+//                                 return connection.rollback(() => {
+//                                     connection.release();
+//                                     return res.status(500).json({ erreur: "Erreur lors de l'insertion des détails de vente." });
+//                                 });
+//                             });
+//                     });
+//                 } catch (err) {
+//                     console.error("Erreur interne serveur:", err);
+//                     return res.status(500).json({ erreur: "Erreur interne du serveur lors de l'exécution de la transaction." });
+//                 }
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
+
+// const ajouterTransaction = async (req, res) => {
+//     const { montant_total, client_id, items, facture, pdf, pdf2 } = req.body;
+//     const date = new Date();
+
+//     if (!Array.isArray(items) || items.length === 0) {
+//         return res.status(400).json({ erreur: "Les éléments de la vente doivent être un tableau." });
+//     }
+
+//     connecter((error, pool) => {
+//         if (error) {
+//             return res.status(500).json({ erreur: "Erreur de connexion à la base de données." });
+//         }
+
+//         pool.getConnection((err, connection) => {
+//             if (err) {
+//                 return res.status(500).json({ erreur: "Impossible d'obtenir une connexion à la base de données." });
+//             }
+
+//             connection.beginTransaction(async (transactionErr) => {
+//                 if (transactionErr) {
+//                     connection.release();
+//                     return res.status(500).json({ erreur: "Erreur de début de transaction." });
+//                 }
+
+//                 try {
+//                     // 1. Insérer la vente
+//                     const vente = {
+//                         montant_total,
+//                         client_id,
+//                         created_at: date,
+//                         updated_at: date,
+//                     };
+
+//                     const [venteResult] = await queryAsync(connection, 'INSERT INTO vente SET ?', vente);
+//                     const vente_id = venteResult.insertId;
+
+//                     // 2. Insérer les détails de la vente
+//                     const detailsPromises = items.map((item) => {
+//                         const detailsvente = {
+//                             vente_id,
+//                             produit_id: item.produit_id,
+//                             quantite: item.quantite,
+//                             prix_unitaire: item.prix_unitaire,
+//                             created_at: date,
+//                             updated_at: date,
+//                         };
+//                         return queryAsync(connection, 'INSERT INTO details_vente SET ?', detailsvente);
+//                     });
+
+//                     await Promise.all(detailsPromises);
+
+//                     // 3. Insérer la facture
+//                     const factureData = {
+//                         vente_id,
+//                         montant_total: facture.montant_total,
+//                         tva: facture.tva,
+//                         remise: facture.remise || 0,
+//                         montant_paye: facture.montant_paye,
+//                         montant_restant: facture.montant_restant,
+//                         mode_paiement: facture.mode_paiement,
+//                         client_id,
+//                         created_at: date,
+//                         updated_at: date,
+//                     };
+
+//                     const [factureResult] = await queryAsync(connection, 'INSERT INTO facture SET ?', factureData);
+//                     const facture_id = factureResult.insertId;
+
+//                     // 4. Enregistrer la facturation PDF
+//                     const facturation = {
+//                         facture_id,
+//                         pdf,
+//                         pdf2,
+//                         created_at: date,
+//                         updated_at: date,
+//                     };
+
+//                     await queryAsync(connection, 'INSERT INTO facturation SET ?', facturation);
+
+//                     // 5. Commit de la transaction
+//                     await connection.commit();
+//                     connection.release();
+
+//                     return res.status(200).json({ message: "Transaction effectuée avec succès." });
+
+//                 } catch (error) {
+//                     connection.rollback(() => {
+//                         connection.release();
+//                         return res.status(500).json({ erreur: "Erreur lors de l'exécution de la transaction." });
+//                     });
+//                 }
+//             });
+//         });
+//     });
+// };
+
+
 const ajouterTransaction = async (req, res) => {
-    const { montant_total, client_id, items, facture, pdf,pdf2 } = req.body;
+    const { montant_total, client_id, items, facture, pdf, pdf2 } = req.body;
     const date = new Date();
 
-    try {
-        // Vérification de la structure des items (tableau d'objets)
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ erreur: "Les éléments de la vente doivent être un tableau." });
+    // Vérifier que items est bien un tableau
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ erreur: "Les éléments de la vente doivent être un tableau." });
+    }
+
+    connecter((error, pool) => {
+        if (error) {
+            return res.status(500).json({ erreur: "Erreur de connexion à la base de données." });
         }
 
-        // Connexion à la base de données avec un pool
-        connecter((error, connection) => {
-            if (error) {
-                return res.status(500).json({ erreur: "Erreur de connexion à la base de données." });
+        pool.getConnection((err, connection) => {
+            if (err) {
+                return res.status(500).json({ erreur: "Impossible d'obtenir une connexion à la base de données." });
             }
 
-            // Commencer une transaction
             connection.beginTransaction(async (err) => {
                 if (err) {
+                    connection.release();
                     return res.status(500).json({ erreur: "Erreur de début de transaction." });
                 }
 
                 try {
-                    // 1. Insérer la vente
-                    const vente = {
-                        montant_total,
-                        client_id,
-                        created_at: date,
-                        updated_at: date,
-                    };
+                    // 1️⃣ Insérer la vente
+                    const vente = { montant_total, client_id, created_at: date, updated_at: date };
 
                     connection.query('INSERT INTO vente SET ?', vente, (insertErr, insertResult) => {
                         if (insertErr) {
                             return connection.rollback(() => {
+                                connection.release();
                                 return res.status(500).json({ erreur: "Erreur lors de l'insertion de la vente." });
                             });
                         }
 
                         const vente_id = insertResult.insertId;
 
-                        // 2. Insérer les détails de la vente (items)
+                        // 2️⃣ Insérer les détails de vente
                         const detailsPromises = items.map((item) => {
-                            const detailsvente = {
-                                vente_id,
-                                produit_id: item.produit_id,
-                                quantite: item.quantite,
-                                prix_unitaire: item.prix_unitaire,
-                                created_at: date,
-                                updated_at: date,
-                            };
                             return new Promise((resolve, reject) => {
+                                const detailsvente = {
+                                    vente_id,
+                                    produit_id: item.produit_id,
+                                    quantite: item.quantite,
+                                    prix_unitaire: item.prix_unitaire,
+                                    created_at: date,
+                                    updated_at: date,
+                                };
                                 connection.query('INSERT INTO details_vente SET ?', detailsvente, (err) => {
-                                    if (err) {
-                                        return reject(err);
-                                    }
+                                    if (err) return reject(err);
                                     resolve();
                                 });
                             });
                         });
 
-                        // Attendre l'insertion de tous les détails de vente
                         Promise.all(detailsPromises)
                             .then(() => {
-                                // 3. Insérer la facture
+                                // 3️⃣ Insérer la facture
                                 const factureData = {
                                     vente_id,
                                     montant_total: facture.montant_total,
@@ -113,63 +343,69 @@ const ajouterTransaction = async (req, res) => {
                                 connection.query('INSERT INTO facture SET ?', factureData, (factureErr, factureResult) => {
                                     if (factureErr) {
                                         return connection.rollback(() => {
+                                            connection.release();
                                             return res.status(500).json({ erreur: "Erreur lors de l'insertion de la facture." });
                                         });
                                     }
 
                                     const facture_id = factureResult.insertId;
 
-                                    // 4. Enregistrer la facturation PDF
-                                    const facturation = {
-                                        facture_id,
-                                        pdf,
-                                        pdf2,
-                                        created_at: date,
-                                        updated_at: date,
-                                    };
+                                    // 4️⃣ Enregistrer la facturation PDF
+                                    const facturation = { facture_id, pdf, pdf2, created_at: date, updated_at: date };
 
                                     connection.query('INSERT INTO facturation SET ?', facturation, (facturationErr) => {
                                         if (facturationErr) {
                                             return connection.rollback(() => {
+                                                connection.release();
                                                 return res.status(500).json({ erreur: "Erreur lors de l'enregistrement de la facturation PDF." });
                                             });
                                         }
 
-                                        // 5. Commit de la transaction
+                                        // 5️⃣ Commit et libérer la connexion
                                         connection.commit((commitErr) => {
                                             if (commitErr) {
                                                 return connection.rollback(() => {
+                                                    connection.release();
                                                     return res.status(500).json({ erreur: "Erreur lors du commit de la transaction." });
                                                 });
                                             }
 
-                                            // Réussite, transaction terminée
-
+                                            connection.release();
                                             return res.status(200).json({ message: "Transaction effectuée avec succès." });
                                         });
                                     });
                                 });
                             })
                             .catch((err) => {
-                                // Erreur lors de l'insertion des détails de la vente
-                                return connection.rollback(() => {
+                                connection.rollback(() => {
                                     connection.release();
                                     return res.status(500).json({ erreur: "Erreur lors de l'insertion des détails de vente." });
                                 });
                             });
                     });
                 } catch (err) {
-                    console.error("Erreur interne serveur:", err);
-                    return res.status(500).json({ erreur: "Erreur interne du serveur lors de l'exécution de la transaction." });
+                    connection.rollback(() => {
+                        connection.release();
+                        return res.status(500).json({ erreur: "Erreur interne du serveur lors de l'exécution de la transaction." });
+                    });
                 }
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
+
+// Fonction utilitaire pour exécuter des requêtes SQL avec des Promises
+function queryAsync(connection, sql, params) {
+    return new Promise((resolve, reject) => {
+        connection.query(sql, params, (error, results) => {
+            if (error) {
+                return reject(error);
+            }
+            resolve(results);
+        });
+    });
+}
 
 
 
