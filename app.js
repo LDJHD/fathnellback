@@ -9,7 +9,7 @@ const path = require("path");
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL, // Permet les requêtes depuis le frontend
+    origin: "*", // Permet les requêtes depuis le frontend
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
