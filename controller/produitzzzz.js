@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { connecter } = require("./bd/connect");
+const { connecter } = require("../bd/connect");
 
 
 const ajouterProduit = async (req, res) => {

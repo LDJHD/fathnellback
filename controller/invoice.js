@@ -1,4 +1,4 @@
-const { connecter } = require("./bd/connect");
+const { connecter } = require("../bd/connect");
 const axios = require('axios');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');

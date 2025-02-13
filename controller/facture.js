@@ -1,4 +1,4 @@
-const { connecter } = require("./bd/connect");
+const { connecter } = require("../bd/connect");
 
 const ajouterFacture = async (req, res) => {
     try {
