@@ -1,9 +1,14 @@
-# Configuration de Netlify
+# Configuration du build Netlify
 [build]
-  # Commande pour installer les dépendances et construire le projet
-  command = "npm install && npm run build"
-  # Dossier de publication où Netlify trouvera les fichiers à déployer
-  publish = "build"  # ou "dist" si c'est le cas dans ton projet
+  # Commande pour installer les dépendances
+  command = "npm install"
+  # Aucun dossier de publication car Express ne génère pas de fichiers statiques
+  publish = "."
+
+# Définition du dossier où Netlify trouve les fonctions serverless
+[functions]
+  directory = "netlify/functions"
+  included_files = ["route/**", "bd/**", "controller/**", "middleware/**", "netlify/functions/api.js"]
 
 # Variables d'environnement pour la production
 [context.production.environment]
