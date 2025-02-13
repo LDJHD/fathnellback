@@ -43,6 +43,7 @@ const ajouterProduit = async (req, res) => {
             description: req.body.description,
             categorie_id: req.body.categorie_id,
             prix: req.body.prix,
+            dateexpi: req.body.dateexpi,
             code_barre: req.body.code_barre,
             created_at: date,
             updated_at: date
@@ -230,7 +231,7 @@ const listallProduitpagine = async (req, res) => {
 
 const updateProduit = async (req, res) => {
     try {
-        const {id,nom,description,prix,categorie_id,code_barre,updated_at} = req.body;
+        const {id,nom,description,prix,dateexpi,categorie_id,code_barre,updated_at} = req.body;
         const date = new Date;
 
         if (!id) {
@@ -241,6 +242,7 @@ const updateProduit = async (req, res) => {
             nom,
             description,
             prix,
+            dateexpi,
             categorie_id,
             code_barre,
             updated_at: date,
