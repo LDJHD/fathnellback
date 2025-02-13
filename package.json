@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo 'Nothing to build for backend' && exit 0"
-  },
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "build": "echo 'Nothing to build for backend' && exit 0",
+  "start": "node app.js"
+},
   "author": "",
   "license": "ISC",
   "dependencies": {

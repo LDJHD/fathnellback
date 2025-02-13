@@ -1,9 +1,8 @@
 # Configuration du build Netlify
 [build]
   # Commande pour installer les dépendances
-  command = "npm install"
-  # Aucun dossier de publication car Express ne génère pas de fichiers statiques
-  publish = "."
+  command = "npm run build"
+  publish = "." 
 
 # Définition du dossier où Netlify trouve les fonctions serverless
 [functions]
