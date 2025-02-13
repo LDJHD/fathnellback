@@ -16,3 +16,8 @@
   DB_PASSWORD = "Topzen2025@"
   DB_NAME = "u249205154_topzen"
   FRONTEND_URL = "https://front-fgczxnzr4-ldjhds-projects.vercel.app/"
+
+[redirects]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
