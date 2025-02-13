@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { connecter } = require("../bd/connect");
+const { connecter } = require("./bd/connect");
 
 const login = async (req, res) => {
     try {

@@ -1,5 +1,5 @@
 // controller/categorie.js
-const { connecter } = require("../bd/connect");
+const { connecter } = require("./bd/connect");
 
 const ajouterCategorie = async (req, res) => {
     const date=new Date();

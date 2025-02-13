@@ -1,4 +1,4 @@
-const { connecter } = require("../bd/connect");
+const { connecter } = require("./bd/connect");
 const bcrypt = require('bcrypt');
 
 const {envoyerEmail} =   require('./mailer');
