@@ -1,11 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { connecter } = require('./bd/connect');
+const { connecter } = require('/bd/connect');
 const app = express();
 const path = require("path");
 
-const envoyerEmail = require('./controller/mailer');
+const envoyerEmail = require('/controller/mailer');
 
 // Middleware
 app.use(cors({
@@ -29,22 +29,22 @@ connecter((erreur) => {
 
 // Routes API
 const routes = [
-    require("./route/utilisateur"),
-    require("./route/client"),
-    require("./route/categorie"),
-    require("./route/detailcommande"),
-    require("./route/facture"),
-    require("./route/facturation"),
-    require("./route/fournisseur"),
-    require("./route/produit"),
-    require("./route/stock"),
-    require("./route/vente"),
-    require("./route/mail"),
-    require("./route/login"),
-    require("./route/deconnexion"),
+    require("/route/utilisateur"),
+    require("/route/client"),
+    require("/route/categorie"),
+    require("/route/detailcommande"),
+    require("/route/facture"),
+    require("/route/facturation"),
+    require("/route/fournisseur"),
+    require("/route/produit"),
+    require("/route/stock"),
+    require("/route/vente"),
+    require("/route/mail"),
+    require("/route/login"),
+    require("/route/deconnexion"),
     require("./route/pdfRoutes"),
-    require("./route/invoice"),
-    require("./route/supplement"),
+    require("/route/invoice"),
+    require("/route/supplement"),
 ];
 
 routes.forEach(route => app.use("/api/v1", route));
