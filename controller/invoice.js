@@ -673,7 +673,7 @@ doc.image(logoPath, x, y, { width })
 
   if (format === 'A3') doc.image(qrPath, 720, 30, { width: 100 });
   if (format === 'A4') doc.image(qrPath, 500, 30, { width: 80 });
-  if (format === 'Ticket') doc.image(qrPath, 10, 720, { width: 40 });
+  // if (format === 'Ticket') doc.image(qrPath, 150, 420, { width: 60 });
 
   // ====================== INFO FACTURE ======================
   const currentTime = new Date().toLocaleString();
@@ -737,6 +737,8 @@ doc.image(logoPath, x, y, { width })
   
   let paymentY = currentY + plus;
   doc.font('Poppins');
+
+  if (format === 'Ticket') doc.image(qrPath, 150, paymentY, { width: 60 });
 
   const { method, total } = payment;
   doc.font('Poppins-Bold')

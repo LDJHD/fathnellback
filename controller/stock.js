@@ -62,6 +62,50 @@ const ajouterStock = async (req, res) => {
 
 
 
+// const listallStock = async (req, res) => {
+//     try {
+//         connecter((error, connection) => {
+//             if (error) {
+//                 console.error("Erreur lors de la connexion à la base de données :", error);
+//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+//             }
+
+//             // Requête SQL corrigée
+//             const query = `
+//                 SELECT 
+//                     s.*, 
+//                     p.nom AS nom_produit,
+//                     c.nom AS categorie,
+//                     COUNT(d.id) AS vendu, -- Comptage des ventes pour ce produit
+//                     DATE_FORMAT(s.created_at, '%d/%m/%Y %H:%i:%s') AS date_creation
+//                 FROM 
+//                     stock s
+//                 LEFT JOIN 
+//                     produit p ON s.produit_id = p.id
+//                      LEFT JOIN 
+//                     categorie c ON p.categorie_id = c.id
+//                      LEFT JOIN 
+//                     details_vente d ON d.produit_id = p.id
+//                 GROUP BY 
+//                     s.id, p.nom
+//             `;
+
+//             connection.query(query, (erreur, results) => {
+//                 if (erreur) {
+//                     console.error("Erreur lors de la récupération des stocks :", erreur);
+//                     return res.status(500).json({ erreur: "Erreur lors de la récupération des stocks" });
+//                 }
+
+//                 // Retourner les résultats sous forme de JSON
+//                 return res.status(200).json(results);
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
+
 const listallStock = async (req, res) => {
     try {
         connecter((error, connection) => {
@@ -70,24 +114,24 @@ const listallStock = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            // Requête SQL corrigée
+            // Requête SQL mise à jour
             const query = `
                 SELECT 
                     s.*, 
                     p.nom AS nom_produit,
                     c.nom AS categorie,
-                    COUNT(d.id) AS vendu, -- Comptage des ventes pour ce produit
+                    COALESCE(SUM(CASE WHEN d.created_at > s.updated_at THEN d.quantite ELSE 0 END), 0) AS vendu, 
                     DATE_FORMAT(s.created_at, '%d/%m/%Y %H:%i:%s') AS date_creation
                 FROM 
                     stock s
                 LEFT JOIN 
                     produit p ON s.produit_id = p.id
-                     LEFT JOIN 
+                LEFT JOIN 
                     categorie c ON p.categorie_id = c.id
-                     LEFT JOIN 
+                LEFT JOIN 
                     details_vente d ON d.produit_id = p.id
                 GROUP BY 
-                    s.id, p.nom
+                    s.id, p.nom, c.nom
             `;
 
             connection.query(query, (erreur, results) => {
@@ -105,7 +149,6 @@ const listallStock = async (req, res) => {
         return res.status(500).json({ erreur: "Erreur serveur" });
     }
 };
-
 
 
 
@@ -192,6 +235,58 @@ const detailStock = async (req, res) => {
 //     }
 // };
 
+// const valeurStock = async (req, res) => {
+//     try {
+//         const { id } = req.body;
+
+//         connecter((error, connection) => {
+//             if (error) {
+//                 console.error("Erreur lors de la connexion à la base de données :", error);
+//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+//             }
+
+//             // Effectuer une requête pour obtenir la quantité en stock de la table stock
+//             connection.query('SELECT quantite_stock FROM stock WHERE produit_id = ?', [id], (erreur, resultStock) => {
+//                 if (erreur) {
+//                     console.error("Erreur lors de la récupération de la quantité en stock :", erreur);
+//                     return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité en stock" });
+//                 }
+
+//                 if (resultStock.length === 0) {
+//                     return res.status(404).json({ erreur: "Aucune donnée trouvée pour cet ID de produit dans la table stock" });
+//                 }
+
+//                 // Quantité en stock de la table stock
+//                 const quantiteStock = resultStock[0].quantite_stock;
+
+//                 // Effectuer une requête pour obtenir la quantité vendue dans la table detail_vente
+//                 connection.query('SELECT SUM(quantite) AS quantite_vendue FROM details_vente WHERE produit_id = ?', [id], (erreur, resultVente) => {
+//                     if (erreur) {
+//                         console.error("Erreur lors de la récupération de la quantité vendue :", erreur);
+//                         return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité vendue" });
+//                     }
+
+//                     // Si aucune vente n'a été enregistrée, la quantité vendue sera 0
+//                     const quantiteVendue = resultVente[0].quantite_vendue || 0;
+
+//                     // Calculer le stock restant
+//                     const stockRestant = quantiteStock - quantiteVendue;
+
+//                     // Retourner la quantité en stock et la quantité vendue
+//                     return res.status(200).json({
+//                         quantite_stock: quantiteStock,
+//                         quantite_vendue: quantiteVendue,
+//                         stock_restant: stockRestant,
+//                     });
+//                 });
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
+
 const valeurStock = async (req, res) => {
     try {
         const { id } = req.body;
@@ -202,40 +297,50 @@ const valeurStock = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            // Effectuer une requête pour obtenir la quantité en stock de la table stock
-            connection.query('SELECT quantite_stock FROM stock WHERE produit_id = ?', [id], (erreur, resultStock) => {
+            // Récupérer quantite_stock et updated_at de la table stock
+            connection.query('SELECT quantite_stock, updated_at FROM stock WHERE produit_id = ?', [id], (erreur, resultStock) => {
                 if (erreur) {
-                    console.error("Erreur lors de la récupération de la quantité en stock :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité en stock" });
+                    console.error("Erreur lors de la récupération des données du stock :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la récupération des données du stock" });
                 }
 
                 if (resultStock.length === 0) {
                     return res.status(404).json({ erreur: "Aucune donnée trouvée pour cet ID de produit dans la table stock" });
                 }
 
-                // Quantité en stock de la table stock
+                // Récupération des valeurs
                 const quantiteStock = resultStock[0].quantite_stock;
+                const updatedAt = resultStock[0].updated_at;
 
-                // Effectuer une requête pour obtenir la quantité vendue dans la table detail_vente
-                connection.query('SELECT SUM(quantite) AS quantite_vendue FROM details_vente WHERE produit_id = ?', [id], (erreur, resultVente) => {
-                    if (erreur) {
-                        console.error("Erreur lors de la récupération de la quantité vendue :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité vendue" });
+                // Vérifier s'il y a une date de mise à jour
+                if (!updatedAt) {
+                    return res.status(500).json({ erreur: "Date de mise à jour introuvable pour ce produit" });
+                }
+
+                // Récupérer la quantité vendue après updated_at
+                connection.query(
+                    'SELECT SUM(quantite) AS quantite_vendue FROM details_vente WHERE produit_id = ? AND created_at > ?',
+                    [id, updatedAt],
+                    (erreur, resultVente) => {
+                        if (erreur) {
+                            console.error("Erreur lors de la récupération de la quantité vendue :", erreur);
+                            return res.status(500).json({ erreur: "Erreur lors de la récupération de la quantité vendue" });
+                        }
+
+                        // Si aucune vente après la date, alors la quantité vendue est 0
+                        const quantiteVendue = resultVente[0].quantite_vendue || 0;
+
+                        // Calcul du stock restant
+                        const stockRestant = quantiteStock - quantiteVendue;
+
+                        // Retourner les résultats
+                        return res.status(200).json({
+                            quantite_stock: quantiteStock,
+                            quantite_vendue: quantiteVendue,
+                            stock_restant: stockRestant,
+                        });
                     }
-
-                    // Si aucune vente n'a été enregistrée, la quantité vendue sera 0
-                    const quantiteVendue = resultVente[0].quantite_vendue || 0;
-
-                    // Calculer le stock restant
-                    const stockRestant = quantiteStock - quantiteVendue;
-
-                    // Retourner la quantité en stock et la quantité vendue
-                    return res.status(200).json({
-                        quantite_stock: quantiteStock,
-                        quantite_vendue: quantiteVendue,
-                        stock_restant: stockRestant,
-                    });
-                });
+                );
             });
         });
     } catch (error) {
