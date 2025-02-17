@@ -43,6 +43,8 @@ const ajouterProduit = async (req, res) => {
             description: req.body.description,
             categorie_id: req.body.categorie_id,
             prix: req.body.prix,
+            prix_achat: req.body.prix_achat,
+            taxation: req.body.taxation,
             dateexpi: req.body.dateexpi,
             code_barre: req.body.code_barre,
             created_at: date,
@@ -136,7 +138,8 @@ const listallProduit = async (req, res) => {
                 SELECT 
                     p.*, 
                     c.nom AS nom_categorie,
-                    DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date
+                    DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date,
+                    DATE_FORMAT(p.dateexpi, '%d/%m/%Y') AS date_expi
                 FROM produit p
                 LEFT JOIN categorie c ON p.categorie_id = c.id
                 GROUP BY p.id, p.nom
@@ -231,7 +234,7 @@ const listallProduitpagine = async (req, res) => {
 
 const updateProduit = async (req, res) => {
     try {
-        const {id,nom,description,prix,dateexpi,categorie_id,code_barre,updated_at} = req.body;
+        const {id,nom,description,prix,prix_achat,taxation,dateexpi,categorie_id,code_barre,updated_at} = req.body;
         const date = new Date;
 
         if (!id) {
@@ -242,6 +245,8 @@ const updateProduit = async (req, res) => {
             nom,
             description,
             prix,
+            prix_achat,
+            taxation,
             dateexpi,
             categorie_id,
             code_barre,
