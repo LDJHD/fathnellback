@@ -46,6 +46,7 @@ const routes = [
     require("./route/pdfRoutes"),
     require("./route/invoice"),
     require("./route/supplement"),
+    require("./route/notification"),
 ];
 
 routes.forEach(route => app.use("/api/v1", route));
