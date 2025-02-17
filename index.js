@@ -32,6 +32,7 @@ const routes = [
     require("./route/utilisateur"),
     require("./route/client"),
     require("./route/categorie"),
+    require("./route/unit"),
     require("./route/detailcommande"),
     require("./route/facture"),
     require("./route/facturation"),
