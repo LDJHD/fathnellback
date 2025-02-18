@@ -4,6 +4,7 @@ const cors = require('cors');
 const { connecter } = require('./bd/connect');
 const app = express();
 const path = require("path");
+const verifierNotifications = require("./cron/notification");
 
 // const envoyerEmail = require('./controller/mailer');
 
@@ -48,6 +49,8 @@ const routes = [
     require("./route/supplement"),
     require("./route/notification"),
 ];
+
+verifierNotifications();
 
 routes.forEach(route => app.use("/api/v1", route));
 

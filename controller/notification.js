@@ -5,7 +5,9 @@ const ajouterNotification = async (req, res) => {
     const date=new Date();
     try {
         const Notification = {
-            nom: req.body.nom,
+            message: req.body.message,
+            type:req.body.type,
+            lu:0,
             created_at:date,
             updated_at:date,
         }
