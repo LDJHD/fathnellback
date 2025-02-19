@@ -7,7 +7,8 @@ const {
   generateInvoicePDF,
   putFinalize,
   createInvoice,
-  statistiqueComptabilitePdf
+  statistiqueComptabilitePdf,
+  postInvoiceRequestDtosimple
 } = require('../controller/invoice');
 const authenticateToken = require('../middleware/auth');
 const router = express.Router();
@@ -18,6 +19,7 @@ router.post('/invoice/detailById',authenticateToken, generateInvoicePDF);
 router.put('/invoice/delete',authenticateToken, putFinalize);
 router.post('/invoice/createfff',authenticateToken, createInvoice);
 router.post('/invoice/statistique',authenticateToken, statistiqueComptabilitePdf);
+router.post('/invoice/createsimple',authenticateToken,postInvoiceRequestDtosimple);
 
 router.use('/factures', express.static(path.join(__dirname, '../factures')));
 router.use('/pdf', express.static(path.join(__dirname, '../pdf')));

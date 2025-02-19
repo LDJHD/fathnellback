@@ -5,6 +5,7 @@ const { connecter } = require('./bd/connect');
 const app = express();
 const path = require("path");
 const verifierNotifications = require("./cron/notification");
+const verifierNotificationsstock = require("./cron/notificationstock");
 
 // const envoyerEmail = require('./controller/mailer');
 
@@ -51,6 +52,7 @@ const routes = [
 ];
 
 verifierNotifications();
+verifierNotificationsstock();
 
 routes.forEach(route => app.use("/api/v1", route));
 

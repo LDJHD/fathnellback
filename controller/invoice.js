@@ -55,6 +55,27 @@ const postInvoiceRequestDto = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+const postInvoiceRequestDtosimple = async (req, res) => {
+  const { format, ifu, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
+
+
+
+  try {
+    // Assuming you want to send the invoice data to an external service, otherwise you could just save it in the DB
+   
+    const format = req.body.format;
+
+    const datee = await generateInvoicePDFsimple(format, items, client, payment, operator);
+
+   
+      return res.status(201).json({ message: "Invoice created successfully",format,datee });
+   
+  } catch (error) {
+    console.error("Error creating invoice:", error.message);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 // Fonction pour créer une facture et générer un PDF
 const createInvoice = async (req, res) => {
   try {
@@ -942,4 +963,5 @@ module.exports = {
   putFinalize,
   createInvoice,
   statistiqueComptabilitePdf,
+  postInvoiceRequestDtosimple,
 }; 

@@ -170,52 +170,34 @@ const contNonLuNotification = async (req, res) => {
 
 const updateNotification = async (req, res) => {
     try {
-        const date = new Date();
         const { id } = req.body;
+        const date = new Date;
+
         if (!id) {
             return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
         }
 
-        // Liste des champs autorisés à être mis à jour
-        const fieldsToUpdate = ['id','nom'];
-
-        
-
-        // Filtrer les champs présents dans req.body
-        const updates = {};
-           fieldsToUpdate.forEach(field => {
-               if (req.body[field] !== undefined) {
-                   updates[field] = req.body[field];
-               }
-           });
-
-
-        //Mettre a jour la colonne udated_at
-        updates.updated_at=date;
-
-       
-        // Construire dynamiquement la requête SQL
-        const setClause = Object.keys(updates).map(field => `${field} = ?`).join(', ');
-        const values = Object.values(updates);
-        values.push(id);
+        const notification = {
+            lu:1,
+            updated_at: date,
+        };
       
-
         connecter((error, connection) => {
             if (error) {
                 console.error("Erreur lors de la connexion à la base de données :", error);
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            const updateQuery = `UPDATE notification SET ${setClause} WHERE id = ? `;
-            connection.query(updateQuery, values, (erreur, result) => {
+            const updateQuery = 'UPDATE notification SET ? WHERE id = ? ';
+            connection.query(updateQuery, [notification, id], (erreur, result) => {
                 if (erreur) {
-                    console.error("Erreur lors de la mise à jour de Notification :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la mise à jour de Notification" });
+                    console.error("Erreur lors de la mise à jour de stock :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la mise à jour de stock" });
                 } else {
                     if (result.affectedRows === 0) {
-                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID et cet utilisateur" });
+                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
                     }
-                    console.log("Notification mis à jour avec succès.");
+                    console.log("notification mis à jour avec succès.");
                     return res.status(200).json({ message: "Mise à jour réussie", result });
                 }
             });
