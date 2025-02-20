@@ -348,6 +348,15 @@ const generateInvoicePDF = async (uid, responseapi, invoiceDetails, format, qrCo
       .font('Poppins')
       .text(invoiceDetails.director || 'Non renseigné', 30, currentY + 120);
 
+      
+    doc
+    .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+    .fontSize(10) // Ajuste la taille de la police
+    .text(
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !', 30, currentY + 150
+      ,{ align: 'left' });
+  
+
     doc.end();
     console.log(`PDF généré avec succès : ${filePath}`);
     return filePath;
@@ -468,6 +477,13 @@ invoiceDetails.payment.forEach((payment) => {
       .text('Le Directeur Général', 10,  doc.y )
       .font('Poppins')
       .text(invoiceDetails.director || 'Non renseigné', 10,  doc.y);
+
+      doc
+    .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+    .fontSize(5) // Ajuste la taille de la police
+    .text(
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !', 10,doc.y+20
+      ,{ align: 'left' });
     
     
      // Informations additionnelles
@@ -635,6 +651,13 @@ invoiceDetails.payment.forEach((payment) => {
       .font('Poppins')
       .text(invoiceDetails.director || 'Non renseigné', 30, currentY + 120);
 
+      doc
+    .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+    .fontSize(10) // Ajuste la taille de la police
+    .text(
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !', 30, currentY + 150
+      ,{ align: 'left' });
+
     doc.end();
     console.log(`PDF généré avec succès : ${filePath}`);
     return filePath;
@@ -773,6 +796,19 @@ doc.image(logoPath, x, y, { width })
   doc.text('Le Directeur Général', xdebuttt, paymentY + 40)
     .font('Poppins')
     .text('Nom du Directeur', xdebuttt, paymentY + 50);
+
+
+    const s = format === 'A3' ? 10 : format === 'A4' ? 9 : 5;
+
+    doc
+    .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+    .fontSize(s) // Ajuste la taille de la police
+    .text(
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 80
+      ,{ align: 'left' });
+  
+
+    
 
   doc.end();
   console.log(`PDF généré avec succès : ${filePaths}`);
