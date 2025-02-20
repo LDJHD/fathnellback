@@ -1,30 +1,26 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { connecter } = require('./bd/connect');
-const app = express();
 const path = require("path");
 const verifierNotifications = require("./cron/notification");
 const verifierNotificationsstock = require("./cron/notificationstock");
 
-// const envoyerEmail = require('./controller/mailer');
+const app = express();
 
 // Middleware
-app.use(cors({
-    origin: "*", // Permet les requêtes depuis le frontend
-}));
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connexion à la base de données
-connecter((erreur) => {
+// Connexion à la base de données une seule fois
+connecter((erreur, pool) => {
     if (erreur) {
-        console.log("Erreur lors de la connexion avec la base de données MySQL");
+        console.error("❌ Erreur de connexion MySQL :", erreur);
         process.exit(-1);
     } else {
-        console.log("Connexion avec la base de données établie");
+        console.log("✅ Connexion MySQL établie.");
         app.listen(5000, () => {
-            console.log("En attente des requêtes sur le port 5000");
+            console.log("🚀 Serveur démarré sur le port 5000.");
         });
     }
 });
@@ -60,12 +56,5 @@ routes.forEach(route => app.use("/api/v1", route));
 app.use("/factures", express.static(path.join(__dirname, "factures")));
 app.use("/pdf", express.static(path.join(__dirname, "pdf")));
 app.use("/invoices", express.static(path.join(__dirname, "invoices")));
-
-// Route pour envoyer un email
-// app.post('/envoyerEmail', (req, res) => {
-//     const { to, subject, body } = req.body;
-//     envoyerEmail(to, subject, body);
-//     res.status(200).json({ message: 'Email envoyé avec succès!' });
-// });
 
 module.exports = app;
