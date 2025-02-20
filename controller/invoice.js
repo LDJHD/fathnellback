@@ -337,16 +337,22 @@ const generateInvoicePDF = async (uid, responseapi, invoiceDetails, format, qrCo
     invoiceDetails.payment.forEach((payment) => {
       const { name, amount } = payment; // Extraction des propriétés
       doc.font('Poppins-Bold')
-        .text(`Mode de payement: ${name}`, 30, paymentY) // Affiche le mode de paiement (e.g., 'ESPECES')
-        .text(`Montant a payé: ${amount} Fcfa`, 30, paymentY + 20); // Affiche le montant associé
-      paymentY += 40; // Ajuste la position verticale pour le prochain mode de paiement
+      .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
+      .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
+      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 22,{ align: 'right' })
+      .text(`Total HT (B): ${amount} Fcfa`, 30, paymentY )
+      .text(`TVA,18% (B): ${amount} Fcfa`, 30, paymentY + 12)
+      .text(`Total (B): ${amount} Fcfa`, 30, paymentY + 22)
+      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
+      .text(` AIB 0%: ${amount} Fcfa`, 30, paymentY + 40);
+      paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
-    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, currentY + 60);
+    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
 
     // ====================== Signature ======================
-    doc.text('Le Directeur Général', 30, currentY + 100)
+    doc.text('Le Directeur Général', 30, paymentY + 80)
       .font('Poppins')
-      .text(invoiceDetails.director || 'Non renseigné', 30, currentY + 120);
+      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 92);
 
       
     doc
@@ -640,16 +646,22 @@ invoiceDetails.payment.forEach((payment) => {
     invoiceDetails.payment.forEach((payment) => {
       const { name, amount } = payment; // Extraction des propriétés
       doc.font('Poppins-Bold')
-        .text(`Mode de payement: ${name}`, 30, paymentY) // Affiche le mode de paiement (e.g., 'ESPECES')
-        .text(`Montant a payé: ${amount} Fcfa`, 30, paymentY + 20); // Affiche le montant associé
-      paymentY += 40; // Ajuste la position verticale pour le prochain mode de paiement
+      .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
+      .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
+      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 22,{ align: 'right' })
+      .text(`Total HT (B): ${amount} Fcfa`, 30, paymentY )
+      .text(`TVA,18% (B): ${amount} Fcfa`, 30, paymentY + 12)
+      .text(`Total (B): ${amount} Fcfa`, 30, paymentY + 22)
+      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
+      .text(` AIB 0%: ${amount} Fcfa`, 30, paymentY + 40);
+      paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
-    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, currentY + 60);
+    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
 
     // ====================== Signature ======================
-    doc.text('Le Directeur Général', 30, currentY + 100)
+    doc.text('Le Directeur Général', 30, paymentY + 80)
       .font('Poppins')
-      .text(invoiceDetails.director || 'Non renseigné', 30, currentY + 120);
+      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 92);
 
       doc
     .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
@@ -742,7 +754,7 @@ doc.image(logoPath, x, y, { width })
   const tableColumnWidths =
     format === 'A3' ? [220, 200, 200, 130] : format === 'A4' ? [180, 80, 120, 120] : [60, 50, 60, 50];
     const xdebutbg = format === 'Ticket' ? 1 : 30;
-  doc.rect(xdebutbg, tableTop, format === 'A3' ? 800 : format === 'A4' ? 500 : 220, 20).fill('#F5F5F5'); // Fond en-tête
+  doc.rect(xdebutbg, tableTop, format === 'A3' ? 800 : format === 'A4' ? 550 : 220, 20).fill('#F5F5F5'); // Fond en-tête
   doc.font('Poppins-Bold').fillColor('#000').fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6);
   const xdebutt = format === 'Ticket' ? 10 : 30;
   tableHeaders.forEach((header, index) => {
@@ -782,20 +794,26 @@ doc.image(logoPath, x, y, { width })
   let paymentY = currentY + plus;
   doc.font('Poppins');
 
-  if (format === 'Ticket') doc.image(qrPath, 150, paymentY, { width: 60 });
+  if (format === 'Ticket') doc.image(qrPath, 150, paymentY+120, { width: 60 });
 
   const { method, total } = payment;
   doc.font('Poppins-Bold')
-    .text(`Mode de paiement: ${method}`, xdebuttt, paymentY)
-    .text(`Montant payé: ${total} Fcfa`, xdebuttt, paymentY + 20);
-  
+    .text(`Mode de paiement: ${method}`, xdebuttt, paymentY,{ align: 'right' })
+    .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 10,{ align: 'right' })
+    .text(` Reliquat: ${total} Fcfa`, xdebuttt, paymentY + 20,{ align: 'right' })
+    .text(`Total HT (B): ${total} Fcfa`, xdebuttt, paymentY )
+    .text(`TVA,18% (B): ${total} Fcfa`, xdebuttt, paymentY + 10)
+    .text(`Total (B): ${total} Fcfa`, xdebuttt, paymentY + 20)
+    .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 30)
+    .text(` AIB 0%: ${total} Fcfa`, xdebuttt, paymentY + 40);
+   
 
-  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 30);
+  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 50);
 
   // ====================== SIGNATURE ======================
-  doc.text('Le Directeur Général', xdebuttt, paymentY + 40)
+  doc.text('Le Directeur Général', xdebuttt, paymentY + 60)
     .font('Poppins')
-    .text('Nom du Directeur', xdebuttt, paymentY + 50);
+    .text('Nom du Directeur', xdebuttt, paymentY + 70);
 
 
     const s = format === 'A3' ? 10 : format === 'A4' ? 9 : 5;
@@ -804,7 +822,7 @@ doc.image(logoPath, x, y, { width })
     .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
     .fontSize(s) // Ajuste la taille de la police
     .text(
-      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 80
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 90
       ,{ align: 'left' });
   
 
