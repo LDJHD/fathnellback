@@ -59,7 +59,7 @@ const postInvoiceRequestDto = async (req, res) => {
 };
 
 const postInvoiceRequestDtosimple = async (req, res) => {
-  const { format, ifu, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
+  const { cAIB,cHT,cTTC,cTVA, format, ifu,aib, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
 
 
 
@@ -68,7 +68,7 @@ const postInvoiceRequestDtosimple = async (req, res) => {
    
     const format = req.body.format;
 
-    const datee = await generateInvoicePDFsimple(format, items, client, payment, operator);
+    const datee = await generateInvoicePDFsimple(cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator);
 
    
       return res.status(201).json({ message: "Invoice created successfully",format,datee });
