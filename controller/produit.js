@@ -152,7 +152,11 @@ const listallProduit = async (req, res) => {
                 }
 
                 // 2️⃣ Récupérer tous les supplements liés aux produits
-                const querySupplements = `SELECT * FROM supplement`;
+                const querySupplements = `SELECT 
+                s.*, 
+                u.nom AS unit
+            FROM supplement s
+            LEFT JOIN unit u ON s.unit = u.id`;
 
                 connection.query(querySupplements, (err, supplements) => {
                     if (err) {
@@ -459,7 +463,13 @@ const detailProduit = async (req, res) => {
                 const produit = resultProduit[0]; // Récupérer les infos du produit
 
                 // 2️⃣ Récupérer tous les suppléments liés à ce produit
-                const querySupplements = `SELECT * FROM supplement WHERE produit_id = ?`;
+                const querySupplements = `SELECT 
+                s.*, 
+                u.nom AS unit
+            FROM supplement s
+            LEFT JOIN unit u ON s.unit = u.id
+            WHERE s.produit_id = ?
+            `;
 
                 connection.query(querySupplements, [id], (erreur, resultSupplements) => {
                     if (erreur) {
