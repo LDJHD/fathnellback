@@ -17,7 +17,7 @@ const IFU = '3202397904961'; // Ton IFU
 
 // Fonction pour créer une facture
 const postInvoiceRequestDto = async (req, res) => {
-  const { format, ifu, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
+  const {cAIB,cHT,cTTC,cTVA, format, ifu,aib,type, client, items, operator,payment } = req.body; // Destructure the incoming request body
 
   const invoiceRequestDto = {
     format,
@@ -25,8 +25,10 @@ const postInvoiceRequestDto = async (req, res) => {
     type,
     client,
     items,       // Already an array from req.body
-    operator,   // Already an object from req.body
+    operator,    // Already an object from req.body
+    ...(aib === "A" || aib === "B" ? { aib } : {}),
   };
+  
 
   try {
     // Assuming you want to send the invoice data to an external service, otherwise you could just save it in the DB
@@ -40,12 +42,12 @@ const postInvoiceRequestDto = async (req, res) => {
     const { uid } = response.data;
     const format = req.body.format;
 
-    const datee = await generateInvoicePDFsimple(format, items, client, payment, operator);
+    const datee = await generateInvoicePDFsimple(cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator);
 
     if (uid) {
       console.log("Invoice created successfully, UID:", uid);
       // Call a function to get invoice details if needed
-      await getInvoiceDetailsDto(format, uid, res, items);  // Ensure this function is defined
+      await getInvoiceDetailsDto(cAIB,cHT,cTTC,cTVA,aib,format, uid, res, items);  // Ensure this function is defined
       return res.status(201).json({ message: "Invoice created successfully", uid, format,datee });
     } else {
       return res.status(400).json({ message: "Invoice creation failed" });
@@ -57,7 +59,7 @@ const postInvoiceRequestDto = async (req, res) => {
 };
 
 const postInvoiceRequestDtosimple = async (req, res) => {
-  const { format, ifu, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
+  const { cAIB,cHT,cTTC,cTVA, format, ifu,aib, type, client, items, operator,payment } = req.body; // Destructure the incoming request body
 
 
 
@@ -66,7 +68,7 @@ const postInvoiceRequestDtosimple = async (req, res) => {
    
     const format = req.body.format;
 
-    const datee = await generateInvoicePDFsimple(format, items, client, payment, operator);
+    const datee = await generateInvoicePDFsimple(cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator);
 
    
       return res.status(201).json({ message: "Invoice created successfully",format,datee });
@@ -143,7 +145,7 @@ const createInvoice = async (req, res) => {
 };
 
 // Fonction pour récupérer les détails de la facture
-const getInvoiceDetailsDto = async (format, uid, res, items) => {
+const getInvoiceDetailsDto = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, res, items) => {
   try {
     const response = await axios.get(`${API_URL}/invoice/${uid}`, {
       headers: {
@@ -153,7 +155,7 @@ const getInvoiceDetailsDto = async (format, uid, res, items) => {
 
     console.log("InvoiceDetailsDto:", response.data);
     // Finaliser la facture après avoir récupéré les détails
-    putFinalize(format, uid, response.data, res, items);
+    putFinalize(cAIB,cHT,cTTC,cTVA,aib,format, uid, response.data, res, items);
   } catch (error) {
     console.error("Error fetching invoice details:", error.message);
     return res.status(500).json({ message: "Error fetching invoice details", error: error.message });
@@ -161,7 +163,7 @@ const getInvoiceDetailsDto = async (format, uid, res, items) => {
 };
 
 
-const putFinalize = async (format, uid, invoiceDetails, res, items) => {
+const putFinalize = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, invoiceDetails, res, items) => {
   try {
     // Finalisation de la facture
     const response = await axios.put(`${API_URL}/invoice/${uid}/confirm`, {}, {
@@ -178,7 +180,7 @@ const putFinalize = async (format, uid, invoiceDetails, res, items) => {
     console.log("QR Code récupéré :", qrCode);
 
     // Générer le PDF après la finalisation
-    const filePath = await generateInvoicePDF(uid, response.data, invoiceDetails, format, qrCode, items).catch((error) => {
+    const filePath = await generateInvoicePDF(cAIB,cHT,cTTC,cTVA,aib,uid, response.data, invoiceDetails, format, qrCode, items).catch((error) => {
       console.error("Erreur lors de la génération du PDF :", error.message);
       // Si le PDF échoue, renvoyer la réponse une seule fois
       if (!res.headersSent) {
@@ -206,7 +208,7 @@ const putFinalize = async (format, uid, invoiceDetails, res, items) => {
 
 
 
-const generateInvoicePDF = async (uid, responseapi, invoiceDetails, format, qrCodeUrl, items) => {
+const generateInvoicePDF = async (cAIB,cHT,cTTC,cTVA,aib,uid, responseapi, invoiceDetails, format, qrCodeUrl, items) => {
   // Définir le format du document (A3 ou A4)
 
   console.log(format);
@@ -339,12 +341,12 @@ const generateInvoicePDF = async (uid, responseapi, invoiceDetails, format, qrCo
       doc.font('Poppins-Bold')
       .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
       .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
-      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 22,{ align: 'right' })
-      .text(`Total HT (B): ${amount} Fcfa`, 30, paymentY )
+      .text(` Reliquat: 0 Fcfa`, 30, paymentY + 22,{ align: 'right' })
+      .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, 30, paymentY )
       .text(`TVA,18% (B): ${amount} Fcfa`, 30, paymentY + 12)
-      .text(`Total (B): ${amount} Fcfa`, 30, paymentY + 22)
+      .text(`Total (B):  ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 22)
       .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
-      .text(` AIB 0%: ${amount} Fcfa`, 30, paymentY + 40);
+      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 40);
       paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
     doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
@@ -472,9 +474,14 @@ invoiceDetails.payment.forEach((payment) => {
 
       doc.font('Poppins-Bold')
         .fontSize(6)
-        .text(`Mode de paiement : ${name}`, 10,  doc.y + 10)
-        .text(`Total : ${Math.floor(amount)} Fcfa`, 10,  doc.y ); // Montant sans décimales
-    
+        .text(`Mode de paiement : ${name}`, 10,paymentY,{ align: 'right' })
+        .text(`Total : ${Math.floor(amount)} Fcfa`, 10,paymentY+10,{ align: 'right' } ) // Montant sans décimales
+        .text(` Reliquat: 0 `, 10, paymentY + 20,{ align: 'right' })
+        .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, 10, paymentY )
+        .text(`TVA,18% (B): ${cTVA} Fcfa`, 10, paymentY + 10)
+        .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, 10, paymentY + 20)
+        .text(`Total Exonéré(A ex): ${Math.floor(amount)} Fcfa`, 10, paymentY + 30)
+        .text(` AIB ${aib}%: ${cAIB} Fcfa`, 10, paymentY + 40);
     });
     
     // Signature
@@ -649,15 +656,14 @@ invoiceDetails.payment.forEach((payment) => {
       .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
       .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
       .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 22,{ align: 'right' })
-      .text(`Total HT (B): ${amount} Fcfa`, 30, paymentY )
-      .text(`TVA,18% (B): ${amount} Fcfa`, 30, paymentY + 12)
-      .text(`Total (B): ${amount} Fcfa`, 30, paymentY + 22)
+      .text(`Total HT (B):  ${cTVA !== 0 ? cHT : 0} Fcfa`, 30, paymentY )
+      .text(`TVA,18% (B):  ${cTVA} Fcfa`, 30, paymentY + 12)
+      .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 22)
       .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
-      .text(` AIB 0%: ${amount} Fcfa`, 30, paymentY + 40);
+      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 40);
       paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
     doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
-
     // ====================== Signature ======================
     doc.text('Le Directeur Général', 30, paymentY + 80)
       .font('Poppins')
@@ -678,7 +684,7 @@ invoiceDetails.payment.forEach((payment) => {
 };
 
 
-const generateInvoicePDFsimple = async (format, items, client, payment, operator) => {
+const generateInvoicePDFsimple = async (cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator) => {
   const datee = new Date().toISOString().replace(/[:.]/g, '-');
   const outputDir = path.join(__dirname, '../invoices');
 
@@ -800,12 +806,12 @@ doc.image(logoPath, x, y, { width })
   doc.font('Poppins-Bold')
     .text(`Mode de paiement: ${method}`, xdebuttt, paymentY,{ align: 'right' })
     .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 10,{ align: 'right' })
-    .text(` Reliquat: ${total} Fcfa`, xdebuttt, paymentY + 20,{ align: 'right' })
-    .text(`Total HT (B): ${total} Fcfa`, xdebuttt, paymentY )
-    .text(`TVA,18% (B): ${total} Fcfa`, xdebuttt, paymentY + 10)
-    .text(`Total (B): ${total} Fcfa`, xdebuttt, paymentY + 20)
+    .text(` Reliquat: 0 `, xdebuttt, paymentY + 20,{ align: 'right' })
+    .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, xdebuttt, paymentY )
+    .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 10)
+    .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 20)
     .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 30)
-    .text(` AIB 0%: ${total} Fcfa`, xdebuttt, paymentY + 40);
+    .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 40);
    
 
   doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 50);
