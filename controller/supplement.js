@@ -179,7 +179,7 @@ const listallsupplement = async (req, res) => {
 
 const updatesupplement = async (req, res) => {
     try {
-        const { id, produit_id, prix, unit } = req.body;
+        const { id, produit_id, prix, unit ,unit_id} = req.body;
         const date = new Date();
 
         if (!produit_id || !prix || !unit) {
