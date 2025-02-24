@@ -465,7 +465,8 @@ const detailProduit = async (req, res) => {
                 // 2️⃣ Récupérer tous les suppléments liés à ce produit
                 const querySupplements = `SELECT 
                 s.*, 
-                u.nom AS unit
+                u.nom AS unit,
+                u.id AS unit_id
             FROM supplement s
             LEFT JOIN unit u ON s.unit = u.id
             WHERE s.produit_id = ?
