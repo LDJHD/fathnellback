@@ -71,10 +71,10 @@ const ajouterUtilisateur = async (req, res) => {
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                connection.query('SELECT id,nom,prenom,email,telephone,adresse,ifu,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date FROM Utilisateur', (erreur, results) => {
+                connection.query('SELECT *  from users', (erreur, results) => {
                     if (erreur) {
                         console.error("Erreur lors de la récupération des Utilisateurs :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération des catégories" });
+                        return res.status(500).json({ erreur: "Erreur lors de la récupération des users" });
                     } else {
                         return res.status(200).json(results);
                     }
@@ -117,12 +117,7 @@ const ajouterUtilisateur = async (req, res) => {
     
     const updateUtilisateur = async (req, res) => {
         try {
-            const { id,  nom,
-                prenom,
-                email,
-                telephone,
-                adresse,
-            ifu } = req.body;
+            const { id,status,actif } = req.body;
             const date = new Date;
     
             if (!id) {
@@ -130,12 +125,7 @@ const ajouterUtilisateur = async (req, res) => {
             }
     
             const Utilisateur = {
-                nom,
-                prenom,
-                email,
-                telephone,
-                adresse,
-                ifu,
+                status,actif,
                 updated_at: date,
             };
             
@@ -145,7 +135,7 @@ const ajouterUtilisateur = async (req, res) => {
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                const updateQuery = 'UPDATE Utilisateur SET ? WHERE id = ? ';
+                const updateQuery = 'UPDATE users SET ? WHERE id = ? ';
                 connection.query(updateQuery, [Utilisateur, id], (erreur, result) => {
                     if (erreur) {
                         console.error("Erreur lors de la mise à jour de Utilisateur :", erreur);
