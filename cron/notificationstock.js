@@ -22,77 +22,133 @@ const verifierNotificationsstock = async () => {
             }
 
             // Récupérer tous les produits avec leur stock actuel
-            connection.query(
-                'SELECT produit_id, quantite_stock  FROM stock',
-                (err, resultatsStock) => {
-                    if (err) {
-                        console.error("❌ Erreur lors de la récupération des stocks :", err);
-                        return;
-                    }
+            // connection.query(
+            //     'SELECT produit_id, quantite_stock  FROM stock',
+            //     (err, resultatsStock) => {
+            //         if (err) {
+            //             console.error("❌ Erreur lors de la récupération des stocks :", err);
+            //             return;
+            //         }
 
-                    if (resultatsStock.length === 0) {
-                        console.log("✅ Aucun produit trouvé.");
-                        return;
-                    }
+            //         if (resultatsStock.length === 0) {
+            //             console.log("✅ Aucun produit trouvé.");
+            //             return;
+            //         }
 
-                    resultatsStock.forEach((produit) => {
-                        const { produit_id, nom } = produit;
+            //         resultatsStock.forEach((produit) => {
+            //             const { produit_id, nom } = produit;
 
-                        // Requête pour récupérer le stock restant pour chaque produit
-                        connection.query(
-                            'SELECT quantite_stock FROM stock WHERE produit_id = ?',
-                            [produit_id],
-                            (err, resultStock) => {
-                                if (err) {
-                                    console.error("❌ Erreur lors de la récupération du stock restant :", err);
-                                    return;
-                                }
+            //             // Requête pour récupérer le stock restant pour chaque produit
+            //             connection.query(
+            //                 'SELECT quantite_stock FROM stock WHERE produit_id = ?',
+            //                 [produit_id],
+            //                 (err, resultStock) => {
+            //                     if (err) {
+            //                         console.error("❌ Erreur lors de la récupération du stock restant :", err);
+            //                         return;
+            //                     }
 
-                                if (resultStock.length === 0) {
-                                    console.log(`✅ Aucun stock trouvé pour le produit ${nom}.`);
-                                    return;
-                                }
+            //                     if (resultStock.length === 0) {
+            //                         console.log(`✅ Aucun stock trouvé pour le produit ${nom}.`);
+            //                         return;
+            //                     }
 
-                                const quantiteStock = resultStock[0].quantite_stock;
+            //                     const quantiteStock = resultStock[0].quantite_stock;
 
-                                // Vérifier si le stock est inférieur à 20
-                                if (quantiteStock < 20) {
-                                    const message = `Votre stock restant pour ${nom} est de ${quantiteStock}. Veuillez vite recharger.`;
-                                    const type = "stock faible";
+            //                     // Vérifier si le stock est inférieur à 20
+            //                     if (quantiteStock < 20) {
+            //                         const message = `Votre stock restant pour ${nom} est de ${quantiteStock}. Veuillez vite recharger.`;
+            //                         const type = "stock faible";
 
-                                    // Vérifier si la notification existe déjà
-                                    const checkQuery = `SELECT id FROM notification WHERE message = ?`;
-                                    connection.query(checkQuery, [message], (err, rows) => {
-                                        if (err) {
-                                            console.error("❌ Erreur lors de la vérification des notifications :", err);
-                                            return;
-                                        }
+            //                         // Vérifier si la notification existe déjà
+            //                         const checkQuery = `SELECT id FROM notification WHERE message = ?`;
+            //                         connection.query(checkQuery, [message], (err, rows) => {
+            //                             if (err) {
+            //                                 console.error("❌ Erreur lors de la vérification des notifications :", err);
+            //                                 return;
+            //                             }
 
-                                        if (rows.length === 0) {
-                                            // Insérer la notification
-                                            const Notification = {
-                                                message,
-                                                type,
-                                                lu: 0,
-                                                created_at: formatDateForMySQL(date),
-                                                updated_at: formatDateForMySQL(date),
-                                            };
+            //                             if (rows.length === 0) {
+            //                                 // Insérer la notification
+            //                                 const Notification = {
+            //                                     message,
+            //                                     type,
+            //                                     lu: 0,
+            //                                     created_at: formatDateForMySQL(date),
+            //                                     updated_at: formatDateForMySQL(date),
+            //                                 };
 
-                                            connection.query('INSERT INTO notification SET ?', Notification, (erreur, result) => {
-                                                if (erreur) {
-                                                    console.error("❌ Erreur lors de l'ajout de la notification :", erreur);
-                                                } else {
-                                                    console.log(`✅ Notification ajoutée pour ${nom} : ${message}`);
-                                                }
-                                            });
-                                        }
-                                    });
-                                }
-                            }
-                        );
-                    });
+            //                                 connection.query('INSERT INTO notification SET ?', Notification, (erreur, result) => {
+            //                                     if (erreur) {
+            //                                         console.error("❌ Erreur lors de l'ajout de la notification :", erreur);
+            //                                     } else {
+            //                                         console.log(`✅ Notification ajoutée pour ${nom} : ${message}`);
+            //                                     }
+            //                                 });
+            //                             }
+            //                         });
+            //                     }
+            //                 }
+            //             );
+            //         });
+            //     }
+            // );
+            const query = `
+    SELECT stock.produit_id, produit.nom, stock.quantite_stock 
+    FROM stock 
+    INNER JOIN produit ON stock.produit_id = produit.id
+`;
+
+            connection.query(query, (err, resultatsStock) => {
+                if (err) {
+                    console.error("❌ Erreur lors de la récupération des stocks :", err);
+                    return;
                 }
-            );
+
+                if (resultatsStock.length === 0) {
+                    console.log("✅ Aucun produit trouvé.");
+                    return;
+                }
+
+                resultatsStock.forEach((produit) => {
+                    const { produit_id, nom, quantite_stock } = produit;
+
+                    // Vérifier si le stock est inférieur à 20
+                    if (quantite_stock < 20) {
+                        const message = `Votre stock restant pour ${nom} est de ${quantite_stock}. Veuillez vite recharger.`;
+                        const type = "stock faible";
+
+                        // Vérifier si la notification existe déjà
+                        const checkQuery = `SELECT id FROM notification WHERE message = ?`;
+                        connection.query(checkQuery, [message], (err, rows) => {
+                            if (err) {
+                                console.error("❌ Erreur lors de la vérification des notifications :", err);
+                                return;
+                            }
+
+                            if (rows.length === 0) {
+                                // Insérer la notification
+                                const Notification = {
+                                    message,
+                                    type,
+                                    lu: 0,
+                                    created_at: formatDateForMySQL(new Date()),
+                                    updated_at: formatDateForMySQL(new Date()),
+                                };
+
+                                connection.query('INSERT INTO notification SET ?', Notification, (erreur, result) => {
+                                    if (erreur) {
+                                        console.error("❌ Erreur lors de l'ajout de la notification :", erreur);
+                                    } else {
+                                        console.log(`✅ Notification ajoutée pour ${nom} : ${message}`);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
 
         });
     } catch (error) {

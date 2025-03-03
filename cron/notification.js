@@ -1,28 +1,27 @@
 const cron = require("node-cron");
-const { connecter } = require("../bd/connect"); // Importer la connexion MySQL
+const { connecter } = require("../bd/connect"); // Connexion MySQL
 
-// Fonction pour formater la date en YYYY-MM-DD (format MySQL)
+// Fonction pour formater une date en YYYY-MM-DD HH:MM:SS (format MySQL)
 const formatDateForMySQL = (d) => {
     const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0"); // Mois commence à 0
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
-    return `${year}-${month}-${day}`; // Format MySQL attendu
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
 // Fonction pour vérifier et ajouter les notifications
 const verifierNotifications = async () => {
-    const date = new Date();
     console.log("🕛 Exécution de la vérification des notifications...");
 
     // Définir les dates de vérification
+    const maintenant = new Date();
     const deuxMoisAvant = new Date();
     deuxMoisAvant.setMonth(deuxMoisAvant.getMonth() + 2);
 
-    const unMoisAvant = new Date();
-    unMoisAvant.setMonth(unMoisAvant.getMonth() + 1);
-
-    const deuxSemainesAvant = new Date();
-    deuxSemainesAvant.setDate(deuxSemainesAvant.getDate() + 14);
+    console.log("🔍 Recherche des produits expirant entre :", formatDateForMySQL(maintenant), "et", formatDateForMySQL(deuxMoisAvant));
 
     try {
         connecter((error, connection) => {
@@ -31,19 +30,14 @@ const verifierNotifications = async () => {
                 return;
             }
 
-            // Requête pour récupérer les produits qui expirent bientôt
+            // Requête SQL pour trouver les produits dont la date d'expiration est dans la plage
             const sql = `
-                SELECT id, nom, dateexpi FROM produit
-                WHERE dateexpi IN (?, ?, ?)
+                SELECT id, nom, dateexpi
+                FROM produit
+                WHERE dateexpi BETWEEN ? AND ?
             `;
 
-            const dates = [
-                formatDateForMySQL(deuxMoisAvant),
-                formatDateForMySQL(unMoisAvant),
-                formatDateForMySQL(deuxSemainesAvant),
-            ];
-
-            connection.query(sql, dates, (err, resultats) => {
+            connection.query(sql, [formatDateForMySQL(maintenant), formatDateForMySQL(deuxMoisAvant)], (err, resultats) => {
                 if (err) {
                     console.error("❌ Erreur lors de la récupération des produits :", err);
                     return;
@@ -53,6 +47,8 @@ const verifierNotifications = async () => {
                     console.log("✅ Aucun produit n'expire bientôt.");
                     return;
                 }
+
+                console.log("📋 Produits trouvés :", resultats);
 
                 resultats.forEach((produit) => {
                     const message = `${produit.nom} expire le (${produit.dateexpi}).`;
@@ -72,11 +68,11 @@ const verifierNotifications = async () => {
                                 message,
                                 type,
                                 lu: 0,
-                                created_at: formatDateForMySQL(date),
-                                updated_at: formatDateForMySQL(date),
+                                created_at: formatDateForMySQL(new Date()),
+                                updated_at: formatDateForMySQL(new Date()),
                             };
 
-                            connection.query('INSERT INTO notification SET ?', Notification, (erreur, result) => {
+                            connection.query('INSERT INTO notification SET ?', Notification, (erreur) => {
                                 if (erreur) {
                                     console.error("❌ Erreur lors de l'ajout de la notification :", erreur);
                                 } else {
@@ -87,7 +83,6 @@ const verifierNotifications = async () => {
                     });
                 });
             });
-
         });
     } catch (error) {
         console.error("❌ Erreur serveur :", error);

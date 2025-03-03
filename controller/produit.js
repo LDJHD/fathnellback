@@ -436,7 +436,9 @@ const detailProduit = async (req, res) => {
                 SELECT 
                     p.*, 
                     DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS created_at,
-                    s.quantite_stock AS stock_quantite, 
+                    s.quantite_stock AS stock_quantite,
+                    c.id AS iden_categorie,
+                    c.nom AS nom_categorie,
                     s.created_at AS stock_created_at,
                     COUNT(v.id) AS total_ventes  
                 FROM 
@@ -445,6 +447,8 @@ const detailProduit = async (req, res) => {
                     stock s ON p.id = s.produit_id
                 LEFT JOIN 
                     details_vente v ON p.id = v.produit_id
+                    LEFT JOIN 
+                    categorie c ON p.categorie_id = c.id
                 WHERE 
                     p.id = ?
                 GROUP BY 

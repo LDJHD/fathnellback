@@ -340,22 +340,22 @@ const generateInvoicePDF = async (cAIB,cHT,cTTC,cTVA,aib,uid, responseapi, invoi
       const { name, amount } = payment; // Extraction des propriétés
       doc.font('Poppins-Bold')
       .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
-      .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
-      .text(` Reliquat: 0 Fcfa`, 30, paymentY + 22,{ align: 'right' })
-      .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, 30, paymentY )
-      .text(`TVA,18% (B): ${amount} Fcfa`, 30, paymentY + 12)
-      .text(`Total (B):  ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 22)
-      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
-      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 40);
+      .text(`Total: ${amount} Fcfa`, 30, paymentY + 14,{ align: 'right' })
+      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 26,{ align: 'right' })
+      .text(`Total HT (B):  ${cTVA !== 0 ? cHT : 0} Fcfa`, 30, paymentY )
+      .text(`TVA,18% (B):  ${cTVA} Fcfa`, 30, paymentY + 14)
+      .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 26)
+      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 39)
+      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 52);
       paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
-    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
-
+    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 64);
     // ====================== Signature ======================
-    doc.text('Le Directeur Général', 30, paymentY + 80)
+    doc.text('Le Directeur Général', 30, paymentY + 82)
       .font('Poppins')
-      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 92);
+      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 94);
 
+  
       
     doc
     .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
@@ -654,20 +654,20 @@ invoiceDetails.payment.forEach((payment) => {
       const { name, amount } = payment; // Extraction des propriétés
       doc.font('Poppins-Bold')
       .text(`Mode de paiement: ${name}`, 30, paymentY,{ align: 'right' })
-      .text(`Total: ${amount} Fcfa`, 30, paymentY + 12,{ align: 'right' })
-      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 22,{ align: 'right' })
+      .text(`Total: ${amount} Fcfa`, 30, paymentY + 14,{ align: 'right' })
+      .text(` Reliquat: ${amount} Fcfa`, 30, paymentY + 28,{ align: 'right' })
       .text(`Total HT (B):  ${cTVA !== 0 ? cHT : 0} Fcfa`, 30, paymentY )
-      .text(`TVA,18% (B):  ${cTVA} Fcfa`, 30, paymentY + 12)
-      .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 22)
-      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 32)
-      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 40);
+      .text(`TVA,18% (B):  ${cTVA} Fcfa`, 30, paymentY + 14)
+      .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, 30, paymentY + 26)
+      .text(`Total Exonéré(A ex): ${amount} Fcfa`, 30, paymentY + 39)
+      .text(` AIB ${aib}%: ${cAIB} Fcfa`, 30, paymentY + 52);
       paymentY += 10; // Ajuste la position verticale pour le prochain mode de paiement
     });
-    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 62);
+    doc.text(`Vendeur: ${invoiceDetails.operator.name} `, 30, paymentY + 64);
     // ====================== Signature ======================
-    doc.text('Le Directeur Général', 30, paymentY + 80)
+    doc.text('Le Directeur Général', 30, paymentY + 82)
       .font('Poppins')
-      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 92);
+      .text(invoiceDetails.director || 'Non renseigné', 30, paymentY + 94);
 
       doc
     .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
@@ -805,21 +805,21 @@ doc.image(logoPath, x, y, { width })
   const { method, total } = payment;
   doc.font('Poppins-Bold')
     .text(`Mode de paiement: ${method}`, xdebuttt, paymentY,{ align: 'right' })
-    .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 10,{ align: 'right' })
-    .text(` Reliquat: 0 `, xdebuttt, paymentY + 20,{ align: 'right' })
+    .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 12,{ align: 'right' })
+    .text(` Reliquat: 0 `, xdebuttt, paymentY + 22,{ align: 'right' })
     .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, xdebuttt, paymentY )
-    .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 10)
-    .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 20)
-    .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 30)
-    .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 40);
+    .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 12)
+    .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 22)
+    .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 32)
+    .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 42);
    
 
-  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 50);
+  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 52);
 
   // ====================== SIGNATURE ======================
-  doc.text('Le Directeur Général', xdebuttt, paymentY + 60)
+  doc.text('Le Directeur Général', xdebuttt, paymentY + 62)
     .font('Poppins')
-    .text('Nom du Directeur', xdebuttt, paymentY + 70);
+    .text('Nom du Directeur', xdebuttt, paymentY + 72);
 
 
     const s = format === 'A3' ? 10 : format === 'A4' ? 9 : 5;
