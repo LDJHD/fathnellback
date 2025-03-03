@@ -17,7 +17,7 @@ const ajouterUtilisateur = async (req, res) => {
             status: 'user',
             pays: req.body.pays,
             whatsapp: req.body.whatsapp,
-            actif: 1,
+            actif: 0,
             created_at: date,
             updated_at: date
         };
@@ -71,10 +71,10 @@ const ajouterUtilisateur = async (req, res) => {
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                connection.query('SELECT id,nom,prenom,email,telephone,adresse,ifu,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date FROM Utilisateur', (erreur, results) => {
+                connection.query('SELECT *  from users', (erreur, results) => {
                     if (erreur) {
                         console.error("Erreur lors de la récupération des Utilisateurs :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération des catégories" });
+                        return res.status(500).json({ erreur: "Erreur lors de la récupération des users" });
                     } else {
                         return res.status(200).json(results);
                     }
@@ -117,46 +117,42 @@ const ajouterUtilisateur = async (req, res) => {
     
     const updateUtilisateur = async (req, res) => {
         try {
-            const { id,  nom,
-                prenom,
-                email,
-                telephone,
-                adresse,
-            ifu } = req.body;
-            const date = new Date;
+            const { id, status, actif } = req.body;
+            const date = new Date();
     
             if (!id) {
                 return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
             }
     
-            const Utilisateur = {
-                nom,
-                prenom,
-                email,
-                telephone,
-                adresse,
-                ifu,
-                updated_at: date,
-            };
-            
+            // Construire l'objet de mise à jour en ne prenant que les valeurs définies
+            const Utilisateur = {};
+            if (actif === 1 || actif === 0) Utilisateur.actif = actif;
+            if (status !== undefined) Utilisateur.status = status; 
+            Utilisateur.updated_at = date;
+    
+            if (Object.keys(Utilisateur).length === 1) {
+                return res.status(400).json({ erreur: "Aucune donnée à mettre à jour" });
+            }
+    
             connecter((error, connection) => {
                 if (error) {
                     console.error("Erreur lors de la connexion à la base de données :", error);
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                const updateQuery = 'UPDATE Utilisateur SET ? WHERE id = ? ';
+                const updateQuery = 'UPDATE users SET ? WHERE id = ?';
                 connection.query(updateQuery, [Utilisateur, id], (erreur, result) => {
                     if (erreur) {
-                        console.error("Erreur lors de la mise à jour de Utilisateur :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la mise à jour de Utilisateur" });
-                    } else {
-                        if (result.affectedRows === 0) {
-                            return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
-                        }
-                        console.log("Utilisateur mis à jour avec succès.");
-                        return res.status(200).json({ message: "Mise à jour réussie", result });
+                        console.error("Erreur lors de la mise à jour de l'utilisateur :", erreur);
+                        return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'utilisateur" });
                     }
+    
+                    if (result.affectedRows === 0) {
+                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
+                    }
+    
+                    console.log("Utilisateur mis à jour avec succès.");
+                    return res.status(200).json({ message: "Mise à jour réussie", result });
                 });
             });
         } catch (error) {
@@ -164,6 +160,7 @@ const ajouterUtilisateur = async (req, res) => {
             return res.status(500).json({ erreur: "Erreur serveur" });
         }
     };
+    
     
     const detailUtilisateur = async (req, res) => {
         try {
