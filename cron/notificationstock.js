@@ -113,8 +113,8 @@ const verifierNotificationsstock = async () => {
                 resultatsStock.forEach((produit) => {
                     const { produit_id, nom, quantite_stock } = produit;
 
-                    // Vérifier si le stock est inférieur à 20
-                    if (quantite_stock < 20) {
+                    // Vérifier si le stock est inférieur à 6
+                    if (quantite_stock < 6) {
                         const message = `Votre stock restant pour ${nom} est de ${quantite_stock}. Veuillez vite recharger.`;
                         const type = "stock faible";
 
