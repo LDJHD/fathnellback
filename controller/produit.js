@@ -126,9 +126,71 @@ const { connecter } = require("../bd/connect");
 //     }
 // };
 
+// const ajouterProduit = async (req, res) => {
+//     try {
+//         const { code_barre, acceptdoublons } = req.body;
+
+//         connecter((error, connection) => {
+//             if (error) {
+//                 console.error("Erreur lors de la connexion à la base de données :", error);
+//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+//             }
+
+//             // Vérifier si un produit avec le même code_barre existe
+//             connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+//                 if (err) {
+//                     console.error("Erreur lors de la vérification du code barre :", err);
+//                     return res.status(500).json({ erreur: "Erreur lors de la vérification du code barre" });
+//                 }
+
+//                 if (produits.length > 0 && acceptdoublons != 1) {
+//                     // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
+//                     return res.status(200).json({ existe: 1, produits });
+//                 }
+
+//                 // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
+//                 const date = new Date();
+//                 const produit = {
+//                     nom: req.body.nom,
+//                     description: req.body.description,
+//                     categorie_id: req.body.categorie_id,
+//                     prix: req.body.prix,
+//                     prix_achat: req.body.prix_achat,
+//                     taxation: req.body.taxation,
+//                     dateexpi: req.body.dateexpi,
+//                     code_barre: req.body.code_barre,
+//                     created_at: date,
+//                     updated_at: date
+//                 };
+
+//                 connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
+//                     if (erreur) {
+//                         console.error("Erreur lors de l'ajout de produit :", erreur);
+//                         return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
+//                     }
+
+//                     const produitId = result.insertId;
+//                     connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
+//                         if (err) {
+//                             console.error("Erreur lors de la récupération du produit :", err);
+//                             return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
+//                         }
+
+//                         return res.status(201).json(rows[0]);
+//                     });
+//                 });
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
+
+
 const ajouterProduit = async (req, res) => {
     try {
-        const { code_barre, acceptdoublons } = req.body;
+        const { code_barre, nom, acceptdoublons } = req.body;
 
         connecter((error, connection) => {
             if (error) {
@@ -136,47 +198,60 @@ const ajouterProduit = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            // Vérifier si un produit avec le même code_barre existe
-            connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+            // Vérifier si un produit avec le même code_barre et le même nom existe
+            connection.query('SELECT * FROM produit WHERE code_barre = ? AND nom = ?', [code_barre, nom], (err, produits) => {
                 if (err) {
-                    console.error("Erreur lors de la vérification du code barre :", err);
-                    return res.status(500).json({ erreur: "Erreur lors de la vérification du code barre" });
+                    console.error("Erreur lors de la vérification du code-barres et du nom :", err);
+                    return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres et du nom" });
                 }
 
-                if (produits.length > 0 && acceptdoublons != 1) {
-                    // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
-                    return res.status(200).json({ existe: 1, produits });
+                if (produits.length > 0) {
+                    // Si un produit avec le même code-barres et le même nom existe déjà
+                    return res.status(200).json({ existe: 1, message: "Un produit de même nom existe déjà pour ce code-barres", produits });
                 }
 
-                // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
-                const date = new Date();
-                const produit = {
-                    nom: req.body.nom,
-                    description: req.body.description,
-                    categorie_id: req.body.categorie_id,
-                    prix: req.body.prix,
-                    prix_achat: req.body.prix_achat,
-                    taxation: req.body.taxation,
-                    dateexpi: req.body.dateexpi,
-                    code_barre: req.body.code_barre,
-                    created_at: date,
-                    updated_at: date
-                };
-
-                connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-                    if (erreur) {
-                        console.error("Erreur lors de l'ajout de produit :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
+                // Vérifier si un produit avec le même code_barre existe
+                connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+                    if (err) {
+                        console.error("Erreur lors de la vérification du code-barres :", err);
+                        return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres" });
                     }
 
-                    const produitId = result.insertId;
-                    connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
-                        if (err) {
-                            console.error("Erreur lors de la récupération du produit :", err);
-                            return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
+                    if (produits.length > 0 && acceptdoublons != 1) {
+                        // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
+                        return res.status(200).json({ existe: 1, produits });
+                    }
+
+                    // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
+                    const date = new Date();
+                    const produit = {
+                        nom: req.body.nom,
+                        description: req.body.description,
+                        categorie_id: req.body.categorie_id,
+                        prix: req.body.prix,
+                        prix_achat: req.body.prix_achat,
+                        taxation: req.body.taxation,
+                        dateexpi: req.body.dateexpi,
+                        code_barre: req.body.code_barre,
+                        created_at: date,
+                        updated_at: date
+                    };
+
+                    connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
+                        if (erreur) {
+                            console.error("Erreur lors de l'ajout de produit :", erreur);
+                            return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
                         }
 
-                        return res.status(201).json(rows[0]);
+                        const produitId = result.insertId;
+                        connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
+                            if (err) {
+                                console.error("Erreur lors de la récupération du produit :", err);
+                                return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
+                            }
+
+                            return res.status(201).json(rows[0]);
+                        });
                     });
                 });
             });
