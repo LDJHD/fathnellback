@@ -71,7 +71,7 @@ const ajouterUtilisateur = async (req, res) => {
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                connection.query('SELECT *  from users', (erreur, results) => {
+                connection.query('SELECT id,nom,prenom,email,whatsapp,status,actif,pays, password,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date from users', (erreur, results) => {
                     if (erreur) {
                         console.error("Erreur lors de la récupération des Utilisateurs :", erreur);
                         return res.status(500).json({ erreur: "Erreur lors de la récupération des users" });
@@ -89,79 +89,151 @@ const ajouterUtilisateur = async (req, res) => {
     
     const detailUserconnectUtilisateur = async (req, res) => {
         try {
+            // Vérifie si req.user existe et a un id
+            if (!req.user || !req.user.id) {
+                console.error("❌ ID utilisateur manquant dans la requête !");
+                return res.status(400).json({ erreur: "ID utilisateur manquant dans la requête" });
+            }
+    console.log(1)
             const id = req.user.id;
+            console.log("✅ ID utilisateur récupéré :", id);
     
             connecter((error, connection) => {
                 if (error) {
-                    console.error("Erreur lors de la connexion à la base de données :", error);
-                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+                    console.error("❌ Erreur de connexion à la base de données :", error);
+                    return res.status(500).json({ erreur: "Erreur de connexion à la base de données" });
                 }
     
-                connection.query('SELECT * FROM users WHERE id = ?', [id], (erreur, result) => {
+                // Exécution de la requête SQL
+                connection.query('SELECT * from users WHERE id = ?', [id], (erreur, result) => {
                     if (erreur) {
-                        console.error("Erreur lors de la récupération du Utilisateur :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération du Utilisateur" });
-                    } else {
-                        if (result.length === 0) {
-                            return res.status(404).json({ erreur: "Utilisateur non trouvé" });
-                        }
-                        return res.status(200).json(result[0]); // Renvoie les données combinées
+                        console.error("❌ Erreur SQL lors de la récupération de l'utilisateur :", erreur);
+                        return res.status(500).json({ erreur: "Erreur SQL lors de la récupération de l'utilisateur" });
                     }
+    
+                    console.log("📌 Résultat de la requête SQL :", result);
+    
+                    if (result.length === 0) {
+                        console.log("❌ Utilisateur non trouvé !");
+                        return res.status(404).json({ erreur: "Utilisateur non trouvé" });
+                    }
+    
+                    console.log("✅ Utilisateur trouvé :", result[0]);
+                    return res.status(200).json(result[0]);
                 });
             });
+    
         } catch (error) {
-            console.error("Erreur serveur :", error);
-            return res.status(500).json({ erreur: "Erreur serveur" });
-        }
-    };
-    
-    const updateUtilisateur = async (req, res) => {
-        try {
-            const { id, status, actif } = req.body;
-            const date = new Date();
-    
-            if (!id) {
-                return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
-            }
-    
-            // Construire l'objet de mise à jour en ne prenant que les valeurs définies
-            const Utilisateur = {};
-            if (actif === 1 || actif === 0) Utilisateur.actif = actif;
-            if (status !== undefined) Utilisateur.status = status; 
-            Utilisateur.updated_at = date;
-    
-            if (Object.keys(Utilisateur).length === 1) {
-                return res.status(400).json({ erreur: "Aucune donnée à mettre à jour" });
-            }
-    
-            connecter((error, connection) => {
-                if (error) {
-                    console.error("Erreur lors de la connexion à la base de données :", error);
-                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-                }
-    
-                const updateQuery = 'UPDATE users SET ? WHERE id = ?';
-                connection.query(updateQuery, [Utilisateur, id], (erreur, result) => {
-                    if (erreur) {
-                        console.error("Erreur lors de la mise à jour de l'utilisateur :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'utilisateur" });
-                    }
-    
-                    if (result.affectedRows === 0) {
-                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
-                    }
-    
-                    console.log("Utilisateur mis à jour avec succès.");
-                    return res.status(200).json({ message: "Mise à jour réussie", result });
-                });
-            });
-        } catch (error) {
-            console.error("Erreur serveur :", error);
+            console.error("❌ Erreur serveur :", error);
             return res.status(500).json({ erreur: "Erreur serveur" });
         }
     };
     
     
+    // const updateUtilisateur = async (req, res) => {
+    //     try {
+    //         const { id, status, actif } = req.body;
+    //         const date = new Date();
+    
+    //         if (!id) {
+    //             return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
+    //         }
+    
+    //         // Construire l'objet de mise à jour en ne prenant que les valeurs définies
+    //         const Utilisateur = {};
+    //         if (actif === 1 || actif === 0) Utilisateur.actif = actif;
+    //         if (status !== undefined) Utilisateur.status = status; 
+    //         Utilisateur.updated_at = date;
+    
+    //         if (Object.keys(Utilisateur).length === 1) {
+    //             return res.status(400).json({ erreur: "Aucune donnée à mettre à jour" });
+    //         }
+    
+    //         connecter((error, connection) => {
+    //             if (error) {
+    //                 console.error("Erreur lors de la connexion à la base de données :", error);
+    //                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+    //             }
+    
+    //             const updateQuery = 'UPDATE users SET ? WHERE id = ?';
+    //             connection.query(updateQuery, [Utilisateur, id], (erreur, result) => {
+    //                 if (erreur) {
+    //                     console.error("Erreur lors de la mise à jour de l'utilisateur :", erreur);
+    //                     return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'utilisateur" });
+    //                 }
+    
+    //                 if (result.affectedRows === 0) {
+    //                     return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
+    //                 }
+    
+    //                 console.log("Utilisateur mis à jour avec succès.");
+    //                 return res.status(200).json({ message: "Mise à jour réussie", result });
+    //             });
+    //         });
+    //     } catch (error) {
+    //         console.error("Erreur serveur :", error);
+    //         return res.status(500).json({ erreur: "Erreur serveur" });
+    //     }
+    // };
+    
+
+const updateUtilisateur = async (req, res) => {
+    try {
+        const { id, status, actif, nom, prenom, email, whatsapp,pays, password } = req.body;
+        const date = new Date();
+
+        if (!id) {
+            return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
+        }
+
+        // Construire l'objet de mise à jour
+        const Utilisateur = {};
+        if (actif === 1 || actif === 0) Utilisateur.actif = actif;
+        if (status !== undefined) Utilisateur.status = status;
+        if (nom) Utilisateur.nom = nom;
+        if (prenom) Utilisateur.prenom = prenom;
+        if (email) Utilisateur.email = email;
+        if (whatsapp) Utilisateur.whatsapp = whatsapp;
+        if (pays) Utilisateur.pays = pays;
+        Utilisateur.updated_at = date;
+
+        // Hachage du mot de passe s'il est fourni
+        if (password) {
+            Utilisateur.password = await bcrypt.hash(password, 10);
+        }
+
+        // Vérification s'il y a des données à mettre à jour
+        if (Object.keys(Utilisateur).length === 1) { 
+            return res.status(400).json({ erreur: "Aucune donnée à mettre à jour" });
+        }
+
+        connecter((error, connection) => {
+            if (error) {
+                console.error("Erreur lors de la connexion à la base de données :", error);
+                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            }
+
+            const updateQuery = 'UPDATE users SET ? WHERE id = ?';
+            connection.query(updateQuery, [Utilisateur, id], (erreur, result) => {
+                if (erreur) {
+                    console.error("Erreur lors de la mise à jour de l'utilisateur :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'utilisateur" });
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
+                }
+
+                console.log("Utilisateur mis à jour avec succès.");
+                return res.status(200).json({ message: "Mise à jour réussie", result });
+            });
+        });
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return res.status(500).json({ erreur: "Erreur serveur" });
+    }
+};
+
     const detailUtilisateur = async (req, res) => {
         try {
             const id = req.body.id;

@@ -38,17 +38,26 @@ const postInvoiceRequestDto = async (req, res) => {
         'Content-Type': 'application/json',
       },
     });
-
+console.log(response)
     const { uid } = response.data;
     const format = req.body.format;
 
     const datee = await generateInvoicePDFsimple(cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator);
 
+    const invoiceId = await createInvoice({
+      cAIB, cHT, cTTC, cTVA, aib, format, items, client, operator, payment, ifu, type, 
+      qrCode: response.data.qrCode, 
+      codeMECeFDGI: response.data.codeMECeFDGI,
+      counters: response.data.counters, 
+      nim: response.data.nim, 
+      refundWithAibPayment: response.data.refundWithAibPayment
+    });
+
     if (uid) {
       console.log("Invoice created successfully, UID:", uid);
       // Call a function to get invoice details if needed
       await getInvoiceDetailsDto(cAIB,cHT,cTTC,cTVA,aib,format, uid, res, items);  // Ensure this function is defined
-      return res.status(201).json({ message: "Invoice created successfully", uid, format,datee });
+      return res.status(201).json({ message: "Invoice created successfully", uid, format,datee,invoiceId });
     } else {
       return res.status(400).json({ message: "Invoice creation failed" });
     }
@@ -79,70 +88,72 @@ const postInvoiceRequestDtosimple = async (req, res) => {
   }
 };
 // Fonction pour créer une facture et générer un PDF
-const createInvoice = async (req, res) => {
-  try {
-    // Extraction des données du corps de la requête
-    const { name, price, quantity, taxGroup, format } = req.body;
+// const createInvoice = async (req, res) => {
+//   try {
+//     // Extraction des données du corps de la requête
+//     const { name, price, quantity, taxGroup, format } = req.body;
 
-    // Calcul du prix total
-    const totalPrice = price * quantity;
+//     // Calcul du prix total
+//     const totalPrice = price * quantity;
 
-    // Données de la facture à insérer dans la base de données
-    const invoice = {
-      ifu,
-      type,
-      items,
-      client,
-      operator,
-      payment,
-      qrCode,
-      codeMECeFDGI,
-      counters,
-      nim,
-      refundWithAibPayment,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
+//     // Données de la facture à insérer dans la base de données
+//     const invoice = {
+//       ifu,
+//       type,
+//       items,
+//       client,
+//       operator,
+//       payment,
+//       qrCode,
+//       codeMECeFDGI,
+//       counters,
+//       nim,
+//       refundWithAibPayment,
+//       created_at: new Date(),
+//       updated_at: new Date(),
+//     };
 
 
-    // Insérer la facture dans la base de données
-    connecter((error, connection) => {
-      if (error) {
-        return res.status(500).json({ error: "Erreur de connexion à la base de données" });
-      }
+//     // Insérer la facture dans la base de données
+//     connecter((error, connection) => {
+//       if (error) {
+//         return res.status(500).json({ error: "Erreur de connexion à la base de données" });
+//       }
 
-      connection.query('INSERT INTO invoices SET ?', invoice, (err, result) => {
-        if (err) {
-          return res.status(500).json({ error: "Erreur lors de l'ajout de la facture" });
-        }
+//       connection.query('INSERT INTO invoices SET ?', invoice, (err, result) => {
+//         if (err) {
+//           return res.status(500).json({ error: "Erreur lors de l'ajout de la facture" });
+//         }
 
-        // Génération du PDF avec PDFKit
-        const doc = new PDFDocument({ size: format === 'A3' ? 'A3' : 'A4' });
-        const pdfPath = `./invoices/invoice_${result.insertId}.pdf`;
-        doc.pipe(fs.createWriteStream(pdfPath));
+//         // Génération du PDF avec PDFKit
+//         const doc = new PDFDocument({ size: format === 'A3' ? 'A3' : 'A4' });
+//         const pdfPath = `./invoices/invoice_${result.insertId}.pdf`;
+//         doc.pipe(fs.createWriteStream(pdfPath));
 
-        // Ajouter des détails de la facture dans le PDF
-        doc.fontSize(20).text('Facture DGI', { align: 'center' });
-        doc.text(`Produit: ${name}`, 100, 150);
-        doc.text(`Prix: ${price}`, 100, 180);
-        doc.text(`Quantité: ${quantity}`, 100, 210);
-        doc.text(`Groupe Taxe: ${taxGroup}`, 100, 240);
-        doc.text(`Prix Total: ${totalPrice}`, 100, 270);
+//         // Ajouter des détails de la facture dans le PDF
+//         doc.fontSize(20).text('Facture DGI', { align: 'center' });
+//         doc.text(`Produit: ${name}`, 100, 150);
+//         doc.text(`Prix: ${price}`, 100, 180);
+//         doc.text(`Quantité: ${quantity}`, 100, 210);
+//         doc.text(`Groupe Taxe: ${taxGroup}`, 100, 240);
+//         doc.text(`Prix Total: ${totalPrice}`, 100, 270);
 
-        doc.end(); // Terminer la génération du PDF
+//         doc.end(); // Terminer la génération du PDF
 
-        return res.status(200).json({
-          message: "Facture créée avec succès",
-          invoiceId: result.insertId,
-          pdfPath
-        });
-      });
-    });
-  } catch (error) {
-    console.error("Erreur serveur :", error);
-    return res.status(500).json({ error: "Erreur du serveur" });
-  }
-};
+//         return res.status(200).json({
+//           message: "Facture créée avec succès",
+//           invoiceId: result.insertId,
+//           pdfPath
+//         });
+//       });
+//     });
+//   } catch (error) {
+//     console.error("Erreur serveur :", error);
+//     return res.status(500).json({ error: "Erreur du serveur" });
+//   }
+// };
+
+
 
 // Fonction pour récupérer les détails de la facture
 const getInvoiceDetailsDto = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, res, items) => {
@@ -172,10 +183,29 @@ const putFinalize = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, invoiceDetails, r
 
     console.log("Response de l'API :", response.data);
 
-    const { qrCode } = response.data;
+    const { qrCode, codeMECeFDGI, counters, nim, refundWithAibPayment } = response.data;
     if (!qrCode) {
       return res.status(400).json({ message: "QR code non trouvé dans la réponse" });
     }
+
+        // Création de l'enregistrement de la facture dans la base de données
+    const invoiceData = {
+      cAIB, cHT, cTTC, cTVA, aib, format,
+      items, 
+      client: invoiceDetails.client, 
+      operator: invoiceDetails.operator, 
+      payment: invoiceDetails.payment, 
+      ifu: invoiceDetails.ifu, 
+      type: invoiceDetails.type,
+      qrCode,
+      codeMECeFDGI,
+      counters,
+      nim,
+      refundWithAibPayment
+    };
+
+    const InvoiceId=await createInvoice(invoiceData, res); // Enregistrer la facture
+
 
     console.log("QR Code récupéré :", qrCode);
 
@@ -193,6 +223,7 @@ const putFinalize = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, invoiceDetails, r
       return res.status(200).json({
         message: "Invoice finalized, PDF generated successfully",
         filePath: publicPath,
+        InvoiceId, 
       });
     }
 
@@ -205,6 +236,157 @@ const putFinalize = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, invoiceDetails, r
     }
   }
 };
+
+
+// const putFinalize = async (cAIB, cHT, cTTC, cTVA, aib, format, uid, invoiceDetails, res, items) => {
+//   try {
+//     // Finalisation de la facture
+//     const response = await axios.put(`${API_URL}/invoice/${uid}/confirm`, {}, {
+//       headers: { Authorization: `Bearer ${API_TOKEN}` },
+//     });
+
+//     console.log("Response de l'API :", response.data);
+
+//     const { qrCode, codeMECeFDGI, counters, nim, refundWithAibPayment } = response.data;
+//     if (!qrCode) {
+//       return res.status(400).json({ message: "QR code non trouvé dans la réponse" });
+//     }
+
+//     console.log("QR Code récupéré :", qrCode);
+
+//     // Création de l'enregistrement de la facture dans la base de données
+//     const invoiceData = {
+//       cAIB, cHT, cTTC, cTVA, aib, format,
+//       items, 
+//       client: invoiceDetails.client, 
+//       operator: invoiceDetails.operator, 
+//       payment: invoiceDetails.payment, 
+//       ifu: invoiceDetails.ifu, 
+//       type: invoiceDetails.type,
+//       qrCode,
+//       codeMECeFDGI,
+//       counters,
+//       nim,
+//       refundWithAibPayment
+//     };
+
+//     await createInvoice(invoiceData, res); // Enregistrer la facture
+
+//   } catch (error) {
+//     console.error("Erreur lors de la finalisation de la facture:", error.message);
+//     if (!res.headersSent) {
+//       return res.status(500).json({ message: "Error finalizing invoice", error: error.message });
+//     }
+//   }
+// };
+
+
+
+
+
+
+const createInvoice = (data) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const { cAIB, cHT, cTTC, cTVA, aib, format, items, client, operator, payment, ifu, type, qrCode, codeMECeFDGI, counters, nim, refundWithAibPayment } = data;
+
+      const invoice = {
+        ifu,
+        type,
+        items: JSON.stringify(items),
+        client: JSON.stringify(client),
+        operator: JSON.stringify(operator),
+        payment: JSON.stringify(payment),
+        qrCode,
+        codeMECeFDGI,
+        counters,
+        nim,
+        refundWithAibPayment,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      connecter((error, connection) => {
+        if (error) {
+          reject("Erreur de connexion à la base de données");
+        }
+
+        connection.query('INSERT INTO invoice SET ?', invoice, (err, result) => {
+          if (err) {
+            reject("Erreur lors de l'ajout de la facture");
+          }
+
+          resolve(result.insertId); // Resolve with the inserted invoice ID
+        });
+      });
+    } catch (error) {
+      reject("Erreur du serveur");
+    }
+  });
+};
+
+
+
+
+
+
+
+
+// const createInvoice = async (data, res) => {
+//   try {
+//     // Extraction des données reçues
+//     const { cAIB, cHT, cTTC, cTVA, aib, format, items, client, operator, payment, ifu, type, qrCode, codeMECeFDGI, counters, nim, refundWithAibPayment } = data;
+
+//     // Données de la facture à insérer dans la base de données
+//     const invoice = {
+//       ifu,
+//       type,
+//       items: JSON.stringify(items),
+//       client: JSON.stringify(client),
+//       operator: JSON.stringify(operator),
+//       payment: JSON.stringify(payment),
+//       qrCode,
+//       codeMECeFDGI,
+//       counters,
+//       nim,
+//       refundWithAibPayment,
+//       created_at: new Date(),
+//       updated_at: new Date(),
+//     };
+
+//     // Connexion à la base de données et insertion de la facture
+//     connecter((error, connection) => {
+//       if (error) {
+//         if (!res.headersSent) {
+//           return res.status(500).json({ error: "Erreur de connexion à la base de données" });
+//         }
+//       }
+
+//       connection.query('INSERT INTO invoice SET ?', invoice, (err, result) => {
+//         if (err) {
+//           if (!res.headersSent) {
+//             return res.status(500).json({ error: "Erreur lors de l'ajout de la facture" });
+//           }
+//         }
+
+//         // Retourner l'ID de la facture insérée
+//         if (!res.headersSent) {
+//           return res.status(200).json({
+//             message: "Enregistrement créé avec succès",
+//             invoiceId: result.insertId,  // ID de la facture insérée
+//           });
+//         }
+//       });
+//     });
+
+//   } catch (error) {
+//     console.error("Erreur serveur :", error);
+//     if (!res.headersSent) {
+//       return res.status(500).json({ error: "Erreur du serveur" });
+//     }
+//   }
+// };
+
 
 
 

@@ -268,7 +268,7 @@ const ajouterVente = async (req, res) => {
 
 
 const ajouterTransaction = async (req, res) => {
-    const { montant_total, client_id, items, facture, pdf, pdf2 } = req.body;
+    const { montant_total, client_id, items, facture, pdf, pdf2 ,invoice_id} = req.body;
     const date = new Date();
 
     // Vérifier que items est bien un tableau
@@ -294,7 +294,7 @@ const ajouterTransaction = async (req, res) => {
 
                 try {
                     // 1️⃣ Insérer la vente
-                    const vente = { montant_total, client_id, created_at: date, updated_at: date };
+                    const vente = { montant_total, client_id, created_at: date, updated_at: date,invoice_id };
 
                     connection.query('INSERT INTO vente SET ?', vente, (insertErr, insertResult) => {
                         if (insertErr) {
