@@ -427,6 +427,14 @@ SELECT
     c.id AS idlient,
     c.nom AS client,
     d.id AS d_id,
+    i.id AS id_invoice,
+    i.ifu AS ifu_iinvoice,
+    i.codeMECeFDGI AS codeMECeFDGI_invoice,
+    i.counters AS counters_invoice,
+    i.nim AS nim_invoice,
+    i.refundWithAibPayment AS refundWithAibPayment_iinvoice,
+    i.qrCode AS qrCode_invoice,
+    i.items AS items_invoice,
     DATE_FORMAT(v.created_at, '%d/%m/%Y %H:%i:%s') AS date
 FROM 
      vente v
@@ -434,6 +442,8 @@ LEFT JOIN
     client c ON v.client_id = c.id
     LEFT JOIN 
     details_vente d ON v.id = d.vente_id
+    LEFT JOIN 
+    invoice i ON i.id = v.invoice_id
 GROUP BY 
     v.id
 `;

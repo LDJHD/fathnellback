@@ -281,7 +281,57 @@ const putFinalize = async (cAIB,cHT,cTTC,cTVA,aib,format, uid, invoiceDetails, r
 // };
 
 
+const postInvoiceRequestDtoAvoir = async (req, res) => {
+  const { ifu,aib,type, client, items, operator,payment } = req.body; // Destructure the incoming request body
 
+  const invoiceRequestDto = {
+    format,
+    ifu,
+    type,
+    client,
+    items,       // Already an array from req.body
+    operator,
+    payment,    // Already an object from req.body
+    ...(aib === "A" || aib === "B" ? { aib } : {}),
+  };
+  
+
+  try {
+    // Assuming you want to send the invoice data to an external service, otherwise you could just save it in the DB
+    const response = await axios.post(`${API_URL}/invoice`, invoiceRequestDto, {
+      headers: {
+        Authorization: `Bearer ${API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+console.log(response)
+    const { uid } = response.data;
+    // const format = req.body.format;
+
+    // const datee = await generateInvoicePDFsimple(cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator);
+
+    // const invoiceId = await createInvoice({
+    //   cAIB, cHT, cTTC, cTVA, aib, format, items, client, operator, payment, ifu, type, 
+    //   qrCode: response.data.qrCode, 
+    //   codeMECeFDGI: response.data.codeMECeFDGI,
+    //   counters: response.data.counters, 
+    //   nim: response.data.nim, 
+    //   refundWithAibPayment: response.data.refundWithAibPayment
+    // });
+
+    if (uid) {
+      console.log("Invoice created successfully, UID:", uid);
+      // Call a function to get invoice details if needed
+      // await getInvoiceDetailsDto(cAIB,cHT,cTTC,cTVA,aib,format, uid, res, items);  // Ensure this function is defined
+      return res.status(201).json({ message: "Invoice created successfully", uid });
+    } else {
+      return res.status(400).json({ message: "Invoice creation failed" });
+    }
+  } catch (error) {
+    console.error("Error creating invoice:", error.message);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 
 
@@ -866,6 +916,163 @@ invoiceDetails.payment.forEach((payment) => {
 };
 
 
+// const generateInvoicePDFsimple = async (cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator) => {
+//   const datee = new Date().toISOString().replace(/[:.]/g, '-');
+//   const outputDir = path.join(__dirname, '../invoices');
+
+//   // S'assurer que le dossier de sortie existe
+//   if (!fs.existsSync(outputDir)) {
+//     fs.mkdirSync(outputDir, { recursive: true });
+//   }
+
+//   const filePaths = path.join(outputDir, `invoice_${datee}.pdf`);
+//   const doc = new PDFDocument(
+//     format === 'A3'
+//       ? { size: 'A3', margin: 30 }
+//       : format === 'A4'
+//       ? { size: 'A4', margin: 20 }
+//       : { size: [220, 800], margin: 10 }
+//   );
+
+//   // Fichiers
+//   const fontRegularPath = path.join(__dirname, '../fonts/Poppins-Regular.ttf');
+//   const fontBoldPath = path.join(__dirname, '../fonts/Poppins-Bold.ttf');
+//   const logoPath = path.join(__dirname, '../logo.png');
+//   const qrPath = path.join(__dirname, '../qr.png');
+
+//   // Ajouter les polices
+//   doc.registerFont('Poppins', fontRegularPath);
+//   doc.registerFont('Poppins-Bold', fontBoldPath);
+
+//   doc.pipe(fs.createWriteStream(filePaths));
+// //les entetes
+//   const x = format === 'A3' ? 30 : format === 'A4' ? 30 : 170;
+//   const y = format === 'A3' ? 30 : format === 'A4' ? 30 : 10;
+//   const width = format === 'A3' || format === 'A4' ? 80 : 40;
+
+//   const xPositionn = format === 'Ticket' ? 10 : 30;
+//   const yStartn = format === 'Ticket' ? 10 : 30; // Départ différent pour "Ticket"
+//   const lineSpacingn = format === 'Ticket' ? 10 : 15; // Espacement plus compact pour "Ticket"
+//   const alignText = format === 'Ticket' ? 'left' : 'center'; // Alignement dynamique
+
+// doc.image(logoPath, x, y, { width })
+//   .font('Poppins-Bold')
+//   .fontSize(format === 'A3' ? 12 : format === 'A4' ? 12 : 8)
+//   .text('ATON HELIOSTORE', xPositionn, yStartn, { align: alignText, underline: true })
+//   .fontSize(format === 'A3' ? 10 : format === 'A4' ? 10 : 6)
+//   .text('Fidjrossè centre', xPositionn, yStartn + lineSpacingn, { align: alignText })
+//   .text('Tél: 229 97377399 - Email: superelim@gmail.com', xPositionn, yStartn + lineSpacingn * 2, { align: alignText })
+//   .text('IFU: 3202397094961 - RCCM: RB/COT/23 B 34278', xPositionn, yStartn + lineSpacingn * 3, { align: alignText });
+
+
+//   if (format === 'A3') doc.image(qrPath, 720, 30, { width: 100 });
+//   if (format === 'A4') doc.image(qrPath, 500, 30, { width: 80 });
+//   // if (format === 'Ticket') doc.image(qrPath, 150, 420, { width: 60 });
+
+//   // ====================== INFO FACTURE ======================
+//   const currentTime = new Date().toLocaleString();
+//   const xPosition = format === 'Ticket' ? 10 : 30;
+//   const yStart = format === 'Ticket' ? 80 : 170; // Départ différent pour "Ticket"
+//   const lineSpacing = format === 'Ticket' ? 8 : 15;
+  
+//   doc.fillColor('#000')
+//     .font('Poppins-Bold')
+//     .fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6)
+//     .text(`FACTURE N°: ${datee}`, xPosition, yStart)
+//     .text(`Date: ${currentTime}`, xPosition, yStart + lineSpacing)
+//     .text(`Client: ${client?.name || ' '}`, xPosition, yStart + lineSpacing * 2)
+//     .text(`IFU: ${client?.ifu || ' '}`, xPosition, yStart + lineSpacing * 3)
+//     .text(`Tél: ${client?.contact || ' '}`, xPosition, yStart + lineSpacing * 4)
+//     .text(`Adresse: ${client?.address || ' '}`, xPosition, yStart + lineSpacing * 5);
+  
+
+//   // ====================== TABLEAU DES ARTICLES ======================
+//   const tableTop = format==='Ticket'?150: 270;
+//   const tableHeaders = ['Libellé', 'Quantité', 'Prix Unitaire', 'Montant'];
+//   const tableColumnWidths =
+//     format === 'A3' ? [220, 200, 200, 130] : format === 'A4' ? [180, 80, 120, 120] : [60, 50, 60, 50];
+//     const xdebutbg = format === 'Ticket' ? 1 : 30;
+//   doc.rect(xdebutbg, tableTop, format === 'A3' ? 800 : format === 'A4' ? 550 : 220, 20).fill('#F5F5F5'); // Fond en-tête
+//   doc.font('Poppins-Bold').fillColor('#000').fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6);
+//   const xdebutt = format === 'Ticket' ? 10 : 30;
+//   tableHeaders.forEach((header, index) => {
+//     doc.text(header, xdebutt + tableColumnWidths.slice(0, index).reduce((a, b) => a + b, 0), tableTop + 5, {
+//       width: tableColumnWidths[index],
+//       align: 'left',
+//     });
+//   });
+
+//   let currentY = tableTop + 25;
+//   doc.font('Poppins').fillColor('#000');
+
+//   items.forEach((item) => {
+//     const { name, quantity, unit, price } = item;
+//     const rowData = [
+//       name || 'N/A',
+//       `${quantity} ${unit || ''}`,
+//       `${parseFloat(price) || 0}`,
+//       `${(parseFloat(price) * parseInt(quantity)) || 0}`,
+//     ];
+//     const xdebut = format === 'Ticket' ? 10 : 30;
+//     rowData.forEach((data, index) => {
+//       doc.text(data, xdebut + tableColumnWidths.slice(0, index).reduce((a, b) => a + b, 0), currentY, {
+//         width: tableColumnWidths[index],
+//         align: 'left',
+//       });
+//     });
+
+//     currentY += 20;
+//   });
+
+//   // ====================== TOTALS & PAIEMENTS ======================
+//   const xdebuttt = format === 'Ticket' ? 10 : 30;
+//   const plus = format === 'Ticket' ? 10 : 20;
+
+  
+//   let paymentY = currentY + plus;
+//   doc.font('Poppins');
+
+//   if (format === 'Ticket') doc.image(qrPath, 150, paymentY+120, { width: 60 });
+
+//   const { method, total } = payment;
+//   doc.font('Poppins-Bold')
+//     .text(`Mode de paiement: ${method}`, xdebuttt, paymentY,{ align: 'right' })
+//     .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 12,{ align: 'right' })
+//     .text(` Reliquat: 0 `, xdebuttt, paymentY + 22,{ align: 'right' })
+//     .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, xdebuttt, paymentY )
+//     .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 12)
+//     .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 22)
+//     .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 32)
+//     .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 42);
+   
+
+//   doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 52);
+
+//   // ====================== SIGNATURE ======================
+//   doc.text('Le Directeur Général', xdebuttt, paymentY + 62)
+//     .font('Poppins')
+//     .text('Nom du Directeur', xdebuttt, paymentY + 72);
+
+
+//     const s = format === 'A3' ? 10 : format === 'A4' ? 9 : 5;
+
+//     doc
+//     .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+//     .fontSize(s) // Ajuste la taille de la police
+//     .text(
+//       'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 90
+//       ,{ align: 'left' });
+  
+
+    
+
+//   doc.end();
+//   console.log(`PDF généré avec succès : ${filePaths}`);
+
+//   return datee;
+// };
+
+
 const generateInvoicePDFsimple = async (cAIB,cHT,cTTC,cTVA,aib,format, items, client, payment, operator) => {
   const datee = new Date().toISOString().replace(/[:.]/g, '-');
   const outputDir = path.join(__dirname, '../invoices');
@@ -878,55 +1085,57 @@ const generateInvoicePDFsimple = async (cAIB,cHT,cTTC,cTVA,aib,format, items, cl
   const filePaths = path.join(outputDir, `invoice_${datee}.pdf`);
   const doc = new PDFDocument(
     format === 'A3'
-      ? { size: 'A3', margin: 30 }
+      ? { size: 'A3', margins: { top: 50, bottom: 30, left: 50, right: 50 } }
       : format === 'A4'
-      ? { size: 'A4', margin: 20 }
+      ? { size: 'A4', margins: { top: 50, bottom: 30, left: 50, right: 50 } }
       : { size: [220, 800], margin: 10 }
   );
 
   // Fichiers
   const fontRegularPath = path.join(__dirname, '../fonts/Poppins-Regular.ttf');
   const fontBoldPath = path.join(__dirname, '../fonts/Poppins-Bold.ttf');
+  const fontsemiBoldPath = path.join(__dirname, '../fonts/Poppins-SemiBold.ttf');
   const logoPath = path.join(__dirname, '../logo.png');
   const qrPath = path.join(__dirname, '../qr.png');
 
   // Ajouter les polices
   doc.registerFont('Poppins', fontRegularPath);
   doc.registerFont('Poppins-Bold', fontBoldPath);
+  doc.registerFont('Poppins-SemiBold', fontsemiBoldPath);
 
   doc.pipe(fs.createWriteStream(filePaths));
 //les entetes
-  const x = format === 'A3' ? 30 : format === 'A4' ? 30 : 170;
+  const x = format === 'A3' ? 50 : format === 'A4' ? 50 : 170;
   const y = format === 'A3' ? 30 : format === 'A4' ? 30 : 10;
   const width = format === 'A3' || format === 'A4' ? 80 : 40;
 
-  const xPositionn = format === 'Ticket' ? 10 : 30;
+  const xPositionn = format === 'Ticket' ? 10 : 50;
   const yStartn = format === 'Ticket' ? 10 : 30; // Départ différent pour "Ticket"
   const lineSpacingn = format === 'Ticket' ? 10 : 15; // Espacement plus compact pour "Ticket"
   const alignText = format === 'Ticket' ? 'left' : 'center'; // Alignement dynamique
 
 doc.image(logoPath, x, y, { width })
-  .font('Poppins-Bold')
+  .font('Poppins-SemiBold')
   .fontSize(format === 'A3' ? 12 : format === 'A4' ? 12 : 8)
-  .text('ATON HELIOSTORE', xPositionn, yStartn, { align: alignText, underline: true })
+  .text('ATON HELIOSTORE', xPositionn, yStartn, { align: alignText })
   .fontSize(format === 'A3' ? 10 : format === 'A4' ? 10 : 6)
   .text('Fidjrossè centre', xPositionn, yStartn + lineSpacingn, { align: alignText })
   .text('Tél: 229 97377399 - Email: superelim@gmail.com', xPositionn, yStartn + lineSpacingn * 2, { align: alignText })
   .text('IFU: 3202397094961 - RCCM: RB/COT/23 B 34278', xPositionn, yStartn + lineSpacingn * 3, { align: alignText });
 
 
-  if (format === 'A3') doc.image(qrPath, 720, 30, { width: 100 });
-  if (format === 'A4') doc.image(qrPath, 500, 30, { width: 80 });
-  // if (format === 'Ticket') doc.image(qrPath, 150, 420, { width: 60 });
+  if (format === 'A3') doc.image(qrPath, 670, 30, { width: 100 });
+  if (format === 'A4') doc.image(qrPath, 470, 30, { width: 80 });
+  // if (format === 'Ticket') doc.image(qrPath, 150, 420, { width: 50 });
 
   // ====================== INFO FACTURE ======================
   const currentTime = new Date().toLocaleString();
-  const xPosition = format === 'Ticket' ? 10 : 30;
+  const xPosition = format === 'Ticket' ? 10 : 50;
   const yStart = format === 'Ticket' ? 80 : 170; // Départ différent pour "Ticket"
   const lineSpacing = format === 'Ticket' ? 8 : 15;
   
   doc.fillColor('#000')
-    .font('Poppins-Bold')
+    .font('Poppins-SemiBold')
     .fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6)
     .text(`FACTURE N°: ${datee}`, xPosition, yStart)
     .text(`Date: ${currentTime}`, xPosition, yStart + lineSpacing)
@@ -940,11 +1149,11 @@ doc.image(logoPath, x, y, { width })
   const tableTop = format==='Ticket'?150: 270;
   const tableHeaders = ['Libellé', 'Quantité', 'Prix Unitaire', 'Montant'];
   const tableColumnWidths =
-    format === 'A3' ? [220, 200, 200, 130] : format === 'A4' ? [180, 80, 120, 120] : [60, 50, 60, 50];
-    const xdebutbg = format === 'Ticket' ? 1 : 30;
-  doc.rect(xdebutbg, tableTop, format === 'A3' ? 800 : format === 'A4' ? 550 : 220, 20).fill('#F5F5F5'); // Fond en-tête
+    format === 'A3' ? [220, 200, 200, 130] : format === 'A4' ? [180, 80, 120, 120] : [50, 50, 50, 50];
+    const xdebutbg = format === 'Ticket' ? 1 : 50;
+  doc.rect(xdebutbg, tableTop, format === 'A3' ? 750 : format === 'A4' ? 500 : 220, 20).fill('#F5F5F5'); // Fond en-tête
   doc.font('Poppins-Bold').fillColor('#000').fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6);
-  const xdebutt = format === 'Ticket' ? 10 : 30;
+  const xdebutt = format === 'Ticket' ? 10 : 50;
   tableHeaders.forEach((header, index) => {
     doc.text(header, xdebutt + tableColumnWidths.slice(0, index).reduce((a, b) => a + b, 0), tableTop + 5, {
       width: tableColumnWidths[index],
@@ -963,7 +1172,7 @@ doc.image(logoPath, x, y, { width })
       `${parseFloat(price) || 0}`,
       `${(parseFloat(price) * parseInt(quantity)) || 0}`,
     ];
-    const xdebut = format === 'Ticket' ? 10 : 30;
+    const xdebut = format === 'Ticket' ? 10 : 50;
     rowData.forEach((data, index) => {
       doc.text(data, xdebut + tableColumnWidths.slice(0, index).reduce((a, b) => a + b, 0), currentY, {
         width: tableColumnWidths[index],
@@ -975,42 +1184,42 @@ doc.image(logoPath, x, y, { width })
   });
 
   // ====================== TOTALS & PAIEMENTS ======================
-  const xdebuttt = format === 'Ticket' ? 10 : 30;
+  const xdebuttt = format === 'Ticket' ? 10 : 50;
   const plus = format === 'Ticket' ? 10 : 20;
 
   
-  let paymentY = currentY + plus;
+  let paymentY = currentY +20+ plus;
   doc.font('Poppins');
 
-  if (format === 'Ticket') doc.image(qrPath, 150, paymentY+120, { width: 60 });
+  if (format === 'Ticket') doc.image(qrPath, 150, paymentY+180, { width: 50 });
 
   const { method, total } = payment;
-  doc.font('Poppins-Bold')
+  doc.font('Poppins-SemiBold')
     .text(`Mode de paiement: ${method}`, xdebuttt, paymentY,{ align: 'right' })
-    .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 12,{ align: 'right' })
-    .text(` Reliquat: 0 `, xdebuttt, paymentY + 22,{ align: 'right' })
+    .text(`Total: ${total} Fcfa`, xdebuttt, paymentY + 14,{ align: 'right' })
+    .text(` Reliquat: 0 `, xdebuttt, paymentY + 26,{ align: 'right' })
     .text(`Total HT (B): ${cTVA !== 0 ? cHT : 0} Fcfa`, xdebuttt, paymentY )
-    .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 12)
-    .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 22)
-    .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 32)
-    .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 42);
+    .text(`TVA,18% (B): ${cTVA} Fcfa`, xdebuttt, paymentY + 14)
+    .text(`Total (B): ${cTVA !== 0 ? cTTC : 0} Fcfa`, xdebuttt, paymentY + 28)
+    .text(`Total Exonéré(A ex): ${total} Fcfa`, xdebuttt, paymentY + 40)
+    .text(` AIB ${aib}%: ${cAIB} Fcfa`, xdebuttt, paymentY + 52);
    
 
-  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 52);
+  doc.text(`Vendeur: ${operator.name}`, xdebuttt, paymentY + 62);
 
   // ====================== SIGNATURE ======================
-  doc.text('Le Directeur Général', xdebuttt, paymentY + 62)
+  doc.text('Le Directeur Général', xdebuttt, paymentY + 72)
     .font('Poppins')
-    .text('Nom du Directeur', xdebuttt, paymentY + 72);
+    .text('Nom du Directeur', xdebuttt, paymentY + 82);
 
 
     const s = format === 'A3' ? 10 : format === 'A4' ? 9 : 5;
 
     doc
-    .font('Poppins-Bold') // Assurez-vous d'avoir une version en gras de la police
+    .font('Poppins-SemiBold') // Assurez-vous d'avoir une version en gras de la police
     .fontSize(s) // Ajuste la taille de la police
     .text(
-      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 90
+      'Merci de votre visite ! Nous apprécions votre confiance et espérons vous revoir bientôt. N\'hésitez pas à nous faire part de votre expérience. À très bientôt !',xdebuttt, paymentY + 120
       ,{ align: 'left' });
   
 
@@ -1021,7 +1230,6 @@ doc.image(logoPath, x, y, { width })
 
   return datee;
 };
-
 
 
 // const statistiqueComptabilitePdf = (req, res) => {
