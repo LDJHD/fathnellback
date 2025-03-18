@@ -449,6 +449,7 @@ const detailProduitScan = async (req, res) => {
     }
 };
 
+
 const filtreBycodebarreorid = async (req, res) => {
     try {
         const { valeur } = req.body; // Une seule valeur envoyée
@@ -459,14 +460,16 @@ const filtreBycodebarreorid = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            // Requête SQL pour chercher dans les deux colonnes
+            // Requête SQL avec jointure pour inclure la catégorie
             const query = `
-                SELECT * 
+                SELECT produit.*, categorie.nom AS nom_categorie 
                 FROM produit 
-                WHERE code_barre LIKE ? 
-                   OR nom LIKE ?
+                LEFT JOIN categorie ON produit.categorie_id = categorie.id
+                WHERE produit.code_barre LIKE ? 
+                   OR produit.nom LIKE ?
+                   OR categorie.nom LIKE ?
             `;
-            const values = [`%${valeur}%`, `%${valeur}%`];
+            const values = [`%${valeur}%`, `%${valeur}%`, `%${valeur}%`];
 
             connection.query(query, values, (erreur, result) => {
                 if (erreur) {
@@ -486,6 +489,45 @@ const filtreBycodebarreorid = async (req, res) => {
         return res.status(500).json({ erreur: "Erreur serveur" });
     }
 };
+
+
+// const filtreBycodebarreorid = async (req, res) => {
+//     try {
+//         const { valeur } = req.body; // Une seule valeur envoyée
+
+//         connecter((error, connection) => {
+//             if (error) {
+//                 console.error("Erreur lors de la connexion à la base de données :", error);
+//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+//             }
+
+//             // Requête SQL pour chercher dans les deux colonnes
+//             const query = `
+//                 SELECT * 
+//                 FROM produit 
+//                 WHERE code_barre LIKE ? 
+//                    OR nom LIKE ?
+//             `;
+//             const values = [`%${valeur}%`, `%${valeur}%`];
+
+//             connection.query(query, values, (erreur, result) => {
+//                 if (erreur) {
+//                     console.error("Erreur lors de la récupération des produits :", erreur);
+//                     return res.status(500).json({ erreur: "Erreur lors de la récupération des produits" });
+//                 }
+
+//                 if (result.length === 0) {
+//                     return res.status(404).json({ message: "Aucun produit trouvé" });
+//                 }
+
+//                 return res.status(200).json(result);
+//             });
+//         });
+//     } catch (error) {
+//         console.error("Erreur serveur :", error);
+//         return res.status(500).json({ erreur: "Erreur serveur" });
+//     }
+// };
 
 
 // const detailProduit = async (req, res) => { 
