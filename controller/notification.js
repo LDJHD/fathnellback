@@ -121,7 +121,7 @@ const contLuNotification = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            connection.query('SELECT COUNT(*) AS countlu FROM Notification WHERE lu = ?', [lu], (erreur, result) => {
+            connection.query('SELECT COUNT(*) AS countlu FROM notification WHERE lu = ?', [lu], (erreur, result) => {
                 if (erreur) {
                     console.error("Erreur lors de la récupération de la notification :", erreur);
                     return res.status(500).json({ erreur: "Erreur lors de la récupération de la notification" });
@@ -150,7 +150,7 @@ const contNonLuNotification = async (req, res) => {
                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
             }
 
-            connection.query('SELECT COUNT(*) AS countnonlu FROM Notification WHERE lu = ?', [lu], (erreur, result) => {
+            connection.query('SELECT COUNT(*) AS countnonlu FROM notification WHERE lu = ?', [lu], (erreur, result) => {
                 if (erreur) {
                     console.error("Erreur lors de la récupération de la notification :", erreur);
                     return res.status(500).json({ erreur: "Erreur lors de la récupération de la notification" });
