@@ -56,5 +56,6 @@ routes.forEach(route => app.use("/api/v1", route));
 app.use("/factures", express.static(path.join(__dirname, "factures")));
 app.use("/pdf", express.static(path.join(__dirname, "pdf")));
 app.use("/invoices", express.static(path.join(__dirname, "invoices")));
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 module.exports = app;

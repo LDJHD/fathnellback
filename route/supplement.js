@@ -5,8 +5,8 @@ const {
     detailsupplement,
     deletesupplement,
     updatesupplement,
-    detailsupplementbyproduit
-    
+    detailsupplementbyproduit,
+    updateBatchSupplements
 } = require('../controller/supplement');
 const authenticateToken = require('../middleware/auth');
 const router = express.Router();
@@ -17,5 +17,6 @@ router.post('/supplement/detailById',authenticateToken, detailsupplement);
 router.post('/supplement/delete',authenticateToken, deletesupplement);
 router.post('/supplement/update',authenticateToken, updatesupplement);
 router.post('/supplement/detailbyproduit',authenticateToken, detailsupplementbyproduit);
+router.post('/supplement/updateBatch', authenticateToken, updateBatchSupplements);
 
 module.exports = router;

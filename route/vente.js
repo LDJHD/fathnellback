@@ -10,7 +10,10 @@ const {
     getventedayCount,
     getventemontantdayCount,
     listVentesearch,
-    listVenteProduitsearchSom
+    listVenteProduitsearchSom,
+    getDailySales,
+    getWeeklySales,
+    getMonthlySales
     
 } = require('../controller/vente');
 const authenticateToken = require('../middleware/auth');
@@ -27,4 +30,7 @@ router.get('/vente/day',authenticateToken, getventedayCount);
 router.get('/vente/montantday',authenticateToken, getventemontantdayCount);
 router.post('/vente/ventesearch',authenticateToken, listVentesearch);
 router.post('/vente/ventesearch/som',authenticateToken, listVenteProduitsearchSom);
+router.get('/vente/daily',authenticateToken, getDailySales);
+router.get('/vente/weekly',authenticateToken, getWeeklySales);
+router.get('/vente/monthly',authenticateToken, getMonthlySales);
 module.exports = router;

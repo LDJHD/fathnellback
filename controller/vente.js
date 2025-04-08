@@ -1206,8 +1206,146 @@ const getventemontantdayCount = async (req, res) => {
     }
 };
 
+// Fonction pour récupérer les données de ventes par jour (7 derniers jours)
+const getDailySales = async (req, res) => {
+    try {
+        connecter((error, connection) => {
+            if (error) {
+                console.error("Erreur lors de la connexion à la base de données :", error);
+                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            }
 
+            // Requête pour obtenir les ventes des 7 derniers jours
+            const query = `
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as count,
+                    SUM(montant_total) as total
+                FROM 
+                    vente
+                WHERE 
+                    created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                GROUP BY 
+                    DATE(created_at)
+                ORDER BY 
+                    date ASC
+            `;
 
+            connection.query(query, (erreur, result) => {
+                if (erreur) {
+                    console.error("Erreur lors de la récupération des ventes quotidiennes :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la récupération des ventes quotidiennes" });
+                } else {
+                    // Formater les données pour le frontend
+                    const formattedData = result.map(item => ({
+                        date: item.date,
+                        total: parseFloat(item.total) || 0
+                    }));
+                    return res.status(200).json(formattedData);
+                }
+            });
+        });
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return res.status(500).json({ erreur: "Erreur serveur" });
+    }
+};
+
+// Fonction pour récupérer les données de ventes par semaine (4 dernières semaines)
+const getWeeklySales = async (req, res) => {
+    try {
+        connecter((error, connection) => {
+            if (error) {
+                console.error("Erreur lors de la connexion à la base de données :", error);
+                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            }
+
+            // Requête pour obtenir les ventes des 4 dernières semaines
+            const query = `
+                SELECT 
+                    YEARWEEK(created_at) as week,
+                    MIN(DATE(created_at)) as start_date,
+                    MAX(DATE(created_at)) as end_date,
+                    COUNT(*) as count,
+                    SUM(montant_total) as total
+                FROM 
+                    vente
+                WHERE 
+                    created_at >= DATE_SUB(CURDATE(), INTERVAL 4 WEEK)
+                GROUP BY 
+                    YEARWEEK(created_at)
+                ORDER BY 
+                    week ASC
+            `;
+
+            connection.query(query, (erreur, result) => {
+                if (erreur) {
+                    console.error("Erreur lors de la récupération des ventes hebdomadaires :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la récupération des ventes hebdomadaires" });
+                } else {
+                    // Formater les données pour le frontend
+                    const formattedData = result.map(item => ({
+                        week: `Semaine ${item.week % 100}`,
+                        total: parseFloat(item.total) || 0
+                    }));
+                    return res.status(200).json(formattedData);
+                }
+            });
+        });
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return res.status(500).json({ erreur: "Erreur serveur" });
+    }
+};
+
+// Fonction pour récupérer les données de ventes par mois (12 derniers mois)
+const getMonthlySales = async (req, res) => {
+    try {
+        connecter((error, connection) => {
+            if (error) {
+                console.error("Erreur lors de la connexion à la base de données :", error);
+                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            }
+
+            // Requête pour obtenir les ventes des 12 derniers mois
+            const query = `
+                SELECT 
+                    DATE_FORMAT(created_at, '%Y-%m') as month,
+                    COUNT(*) as count,
+                    SUM(montant_total) as total
+                FROM 
+                    vente
+                WHERE 
+                    created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                GROUP BY 
+                    DATE_FORMAT(created_at, '%Y-%m')
+                ORDER BY 
+                    month ASC
+            `;
+
+            connection.query(query, (erreur, result) => {
+                if (erreur) {
+                    console.error("Erreur lors de la récupération des ventes mensuelles :", erreur);
+                    return res.status(500).json({ erreur: "Erreur lors de la récupération des ventes mensuelles" });
+                } else {
+                    // Formater les données pour le frontend
+                    const formattedData = result.map(item => {
+                        const [year, month] = item.month.split('-');
+                        const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+                        return {
+                            month: monthNames[parseInt(month) - 1],
+                            total: parseFloat(item.total) || 0
+                        };
+                    });
+                    return res.status(200).json(formattedData);
+                }
+            });
+        });
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return res.status(500).json({ erreur: "Erreur serveur" });
+    }
+};
 
 module.exports = {
     ajouterVente,
@@ -1220,5 +1358,8 @@ module.exports = {
     getventedayCount,
     getventemontantdayCount,
     listVentesearch,
-    listVenteProduitsearchSom
+    listVenteProduitsearchSom,
+    getDailySales,
+    getWeeklySales,
+    getMonthlySales
 };

@@ -350,9 +350,87 @@ console.log(id);
     }
 };
 
-
-
-
+// Fonction pour mettre à jour plusieurs suppléments en une seule requête
+const updateBatchSupplements = async (req, res) => {
+  try {
+    const { supplements } = req.body;
+    
+    if (!supplements || !Array.isArray(supplements)) {
+      return res.status(400).json({ erreur: "Format de données invalide" });
+    }
+    
+    connecter((error, connection) => {
+      if (error) {
+        console.error("Erreur lors de la connexion à la base de données :", error);
+        return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+      }
+      
+      // Utiliser une transaction pour garantir l'intégrité des données
+      connection.beginTransaction(err => {
+        if (err) {
+          console.error("Erreur lors du début de la transaction :", err);
+          return res.status(500).json({ erreur: "Erreur lors de la mise à jour des suppléments" });
+        }
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        // Traiter chaque supplément
+        supplements.forEach(supplement => {
+          if (supplement.id) {
+            // Mise à jour d'un supplément existant
+            const updateQuery = 'UPDATE supplement SET unit = ?, produit_id = ? WHERE id = ?';
+            connection.query(updateQuery, [supplement.unit, supplement.produit_id, supplement.id], (err) => {
+              if (err) {
+                errorCount++;
+                console.error("Erreur lors de la mise à jour du supplément :", err);
+              } else {
+                successCount++;
+              }
+            });
+          } else {
+            // Création d'un nouveau supplément
+            const insertQuery = 'INSERT INTO supplement (unit, prix, produit_id) VALUES (?, ?, ?)';
+            connection.query(insertQuery, [supplement.unit, supplement.prix, supplement.produit_id], (err) => {
+              if (err) {
+                errorCount++;
+                console.error("Erreur lors de l'ajout du supplément :", err);
+              } else {
+                successCount++;
+              }
+            });
+          }
+        });
+        
+        // Valider ou annuler la transaction
+        if (errorCount > 0) {
+          connection.rollback(() => {
+            return res.status(500).json({ 
+              erreur: "Erreur lors de la mise à jour des suppléments",
+              details: `${errorCount} erreur(s) sur ${supplements.length} suppléments`
+            });
+          });
+        } else {
+          connection.commit(err => {
+            if (err) {
+              connection.rollback(() => {
+                return res.status(500).json({ erreur: "Erreur lors de la validation des modifications" });
+              });
+            } else {
+              return res.status(200).json({ 
+                message: "Mise à jour réussie", 
+                details: `${successCount} supplément(s) mis à jour sur ${supplements.length}`
+              });
+            }
+          });
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Erreur serveur :", error);
+    return res.status(500).json({ erreur: "Erreur serveur" });
+  }
+};
 
 module.exports = { 
     ajoutersupplement,
@@ -360,5 +438,6 @@ module.exports = {
     detailsupplement,
     deletesupplement,
     updatesupplement,
-    detailsupplementbyproduit
+    detailsupplementbyproduit,
+    updateBatchSupplements
  };

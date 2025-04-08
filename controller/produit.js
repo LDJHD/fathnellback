@@ -1,4 +1,38 @@
 const { connecter } = require("../bd/connect");
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configuration de multer pour le stockage des images
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'public/uploads';
+        // Créer le dossier s'il n'existe pas
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // Générer un nom de fichier unique
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: function (req, file, cb) {
+        // Accepter uniquement les images
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+            return cb(new Error('Seules les images sont autorisées!'), false);
+        }
+        cb(null, true);
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024 // Limite à 5MB
+    }
+}).single('image'); // 'image' est le nom du champ dans le formulaire
 
 // const ajouterProduit = async (req, res) => {
 //     try {
@@ -190,67 +224,75 @@ const { connecter } = require("../bd/connect");
 
 const ajouterProduit = async (req, res) => {
     try {
-        const { code_barre, nom, acceptdoublons } = req.body;
-
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        upload(req, res, async function(err) {
+            if (err) {
+                return res.status(400).json({ erreur: err.message });
             }
 
-            // Vérifier si un produit avec le même code_barre et le même nom existe
-            connection.query('SELECT * FROM produit WHERE code_barre = ? AND nom = ?', [code_barre, nom], (err, produits) => {
-                if (err) {
-                    console.error("Erreur lors de la vérification du code-barres et du nom :", err);
-                    return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres et du nom" });
+            const { code_barre, nom, acceptdoublons } = req.body;
+            const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
+            connecter((error, connection) => {
+                if (error) {
+                    console.error("Erreur lors de la connexion à la base de données :", error);
+                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
 
-                if (produits.length > 0) {
-                    // Si un produit avec le même code-barres et le même nom existe déjà
-                    return res.status(200).json({ existe: 1, message: "Un produit de même nom existe déjà pour ce code-barres", produits });
-                }
-
-                // Vérifier si un produit avec le même code_barre existe
-                connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+                // Vérifier si un produit avec le même code_barre et le même nom existe
+                connection.query('SELECT * FROM produit WHERE code_barre = ? AND nom = ?', [code_barre, nom], (err, produits) => {
                     if (err) {
-                        console.error("Erreur lors de la vérification du code-barres :", err);
-                        return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres" });
+                        console.error("Erreur lors de la vérification du code-barres et du nom :", err);
+                        return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres et du nom" });
                     }
 
-                    if (produits.length > 0 && acceptdoublons != 1) {
-                        // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
-                        return res.status(200).json({ existe: 1, produits });
+                    if (produits.length > 0) {
+                        // Si un produit avec le même code-barres et le même nom existe déjà
+                        return res.status(200).json({ existe: 1, message: "Un produit de même nom existe déjà pour ce code-barres", produits });
                     }
 
-                    // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
-                    const date = new Date();
-                    const produit = {
-                        nom: req.body.nom,
-                        description: req.body.description,
-                        categorie_id: req.body.categorie_id,
-                        prix: req.body.prix,
-                        prix_achat: req.body.prix_achat,
-                        taxation: req.body.taxation,
-                        dateexpi: req.body.dateexpi,
-                        code_barre: req.body.code_barre,
-                        created_at: date,
-                        updated_at: date
-                    };
-
-                    connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-                        if (erreur) {
-                            console.error("Erreur lors de l'ajout de produit :", erreur);
-                            return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
+                    // Vérifier si un produit avec le même code_barre existe
+                    connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+                        if (err) {
+                            console.error("Erreur lors de la vérification du code-barres :", err);
+                            return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres" });
                         }
 
-                        const produitId = result.insertId;
-                        connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
-                            if (err) {
-                                console.error("Erreur lors de la récupération du produit :", err);
-                                return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
+                        if (produits.length > 0 && acceptdoublons != 1) {
+                            // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
+                            return res.status(200).json({ existe: 1, produits });
+                        }
+
+                        // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
+                        const date = new Date();
+                        const produit = {
+                            nom: req.body.nom,
+                            description: req.body.description,
+                            categorie_id: req.body.categorie_id,
+                            prix: req.body.prix,
+                            prix_achat: req.body.prix_achat,
+                            taxation: req.body.taxation,
+                            dateexpi: req.body.dateexpi,
+                            code_barre: req.body.code_barre,
+                            image: imagePath,
+                            created_at: date,
+                            updated_at: date
+                        };
+
+                        connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
+                            if (erreur) {
+                                console.error("Erreur lors de l'ajout de produit :", erreur);
+                                return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
                             }
 
-                            return res.status(201).json(rows[0]);
+                            const produitId = result.insertId;
+                            connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
+                                if (err) {
+                                    console.error("Erreur lors de la récupération du produit :", err);
+                                    return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
+                                }
+
+                                return res.status(201).json(rows[0]);
+                            });
                         });
                     });
                 });
@@ -279,7 +321,8 @@ const listallProduit = async (req, res) => {
                     p.*, 
                     c.nom AS nom_categorie,
                     DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date,
-                    DATE_FORMAT(p.dateexpi, '%d/%m/%Y') AS date_expi
+                    DATE_FORMAT(p.dateexpi, '%d/%m/%Y') AS date_expi,
+                    COALESCE(p.image, '/uploads/default-product.png') as image
                 FROM produit p
                 LEFT JOIN categorie c ON p.categorie_id = c.id
                 GROUP BY p.id, p.nom
@@ -378,43 +421,65 @@ const listallProduitpagine = async (req, res) => {
 
 const updateProduit = async (req, res) => {
     try {
-        const {id,nom,description,prix,prix_achat,taxation,dateexpi,categorie_id,code_barre,updated_at} = req.body;
-        const date = new Date;
-
-        if (!id) {
-            return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
-        }
-
-        const produit = {
-            nom,
-            description,
-            prix,
-            prix_achat,
-            taxation,
-            dateexpi,
-            categorie_id,
-            code_barre,
-            updated_at: date,
-        };
-        
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        upload(req, res, async function(err) {
+            if (err) {
+                return res.status(400).json({ erreur: err.message });
             }
 
-            const updateQuery = 'UPDATE produit SET ? WHERE id = ? ';
-            connection.query(updateQuery, [produit, id], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la mise à jour de produit :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la mise à jour de produit" });
-                } else {
-                    if (result.affectedRows === 0) {
-                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
-                    }
-                    console.log("produit mis à jour avec succès.");
-                    return res.status(200).json({ message: "Mise à jour réussie", result });
+            const {id, nom, description, prix, prix_achat, taxation, dateexpi, categorie_id, code_barre} = req.body;
+            const date = new Date;
+            
+            // Gérer l'image
+            let imagePath;
+            if (req.file) {
+                // Si un nouveau fichier est téléchargé
+                imagePath = `/uploads/${req.file.filename}`;
+            } else if (req.body.image === 'null') {
+                // Si l'utilisateur a explicitement demandé de supprimer l'image
+                imagePath = null;
+            }
+            // Sinon, imagePath reste undefined et l'image existante est conservée
+
+            if (!id) {
+                return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
+            }
+
+            const produit = {
+                nom,
+                description,
+                prix,
+                prix_achat,
+                taxation,
+                dateexpi,
+                categorie_id,
+                code_barre,
+                updated_at: date,
+            };
+
+            // Ajouter l'image seulement si une nouvelle image est téléchargée ou si l'image doit être supprimée
+            if (imagePath !== undefined) {
+                produit.image = imagePath;
+            }
+            
+            connecter((error, connection) => {
+                if (error) {
+                    console.error("Erreur lors de la connexion à la base de données :", error);
+                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
+
+                const updateQuery = 'UPDATE produit SET ? WHERE id = ? ';
+                connection.query(updateQuery, [produit, id], (erreur, result) => {
+                    if (erreur) {
+                        console.error("Erreur lors de la mise à jour de produit :", erreur);
+                        return res.status(500).json({ erreur: "Erreur lors de la mise à jour de produit" });
+                    } else {
+                        if (result.affectedRows === 0) {
+                            return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
+                        }
+                        console.log("produit mis à jour avec succès.");
+                        return res.status(200).json({ message: "Mise à jour réussie", result });
+                    }
+                });
             });
         });
     } catch (error) {
