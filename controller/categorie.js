@@ -82,7 +82,7 @@ const detailCategorie = async (req, res) => {
         return res.status(500).json({ erreur: "Erreur serveur" });
     }
 };
-
+//gggggg
 const updateCategorie = async (req, res) => {
     try {
         const date = new Date();
