@@ -18,6 +18,7 @@ router.get('/notification/listall',authenticateToken, listallNotification);
 router.post('/notification/detailById',authenticateToken, detailNotification);
 router.post('/notification/delete',authenticateToken, deleteNotification);
 router.post('/notification/update',authenticateToken, updateNotification);
-router.get('/notification/countnotification', countNotification);
-router.get('/notification/countnotificationnonlu', contNonLuNotification);
+router.get('/notification/countnotification',authenticateToken, countNotification);
+router.get('/notification/countnotificationnonlu',authenticateToken, contNonLuNotification);
+
 module.exports = router;
