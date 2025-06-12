@@ -1120,8 +1120,9 @@ doc.image(logoPath, x, y, { width })
   .text('ATON HELIOSTORE', xPositionn, yStartn, { align: alignText })
   .fontSize(format === 'A3' ? 10 : format === 'A4' ? 10 : 6)
   .text('Fidjrossè centre', xPositionn, yStartn + lineSpacingn, { align: alignText })
-  .text('Tél: 229 97377399 - Email: superelim@gmail.com', xPositionn, yStartn + lineSpacingn * 2, { align: alignText })
-  .text('IFU: 3202397094961 - RCCM: RB/COT/23 B 34278', xPositionn, yStartn + lineSpacingn * 3, { align: alignText });
+  .text('Tél: 229 97377399 ', xPositionn, yStartn + lineSpacingn * 2, { align: alignText })
+  .text('Email: superelim@gmail.com ', xPositionn, yStartn + lineSpacingn * 3, { align: alignText })
+  .text('IFU: 3202397094961 - RCCM: RB/COT/23 B 34278', xPositionn, yStartn + lineSpacingn * 4, { align: alignText });
 
 
   if (format === 'A3') doc.image(qrPath, 670, 30, { width: 100 });
@@ -1137,7 +1138,19 @@ doc.image(logoPath, x, y, { width })
   doc.fillColor('#000')
     .font('Poppins-SemiBold')
     .fontSize(format === 'A3' ? 10 : format === 'A4' ? 8 : 6)
-    .text(`FACTURE N°: ${datee}`, xPosition, yStart)
+    // .text(`FACTURE N°: ${datee}`, xPosition, yStart)
+    doc.text(
+      `FACTURE N°: ${
+        new Date().getFullYear().toString()
+        + String(new Date().getMonth() + 1).padStart(2, '0')
+        + String(new Date().getDate()).padStart(2, '0')
+        + String(new Date().getHours()).padStart(2, '0')
+        + String(new Date().getMinutes()).padStart(2, '0')
+        + String(new Date().getSeconds()).padStart(2, '0')
+      }`,
+      xPosition,
+      yStart
+    )
     .text(`Date: ${currentTime}`, xPosition, yStart + lineSpacing)
     .text(`Client: ${client?.name || ' '}`, xPosition, yStart + lineSpacing * 2)
     .text(`IFU: ${client?.ifu || ' '}`, xPosition, yStart + lineSpacing * 3)
@@ -1188,10 +1201,10 @@ doc.image(logoPath, x, y, { width })
   const plus = format === 'Ticket' ? 10 : 20;
 
   
-  let paymentY = currentY +20+ plus;
+  let paymentY = currentY +5+ plus;
   doc.font('Poppins');
 
-  if (format === 'Ticket') doc.image(qrPath, 150, paymentY+180, { width: 50 });
+  if (format === 'Ticket') doc.image(qrPath, 150, paymentY+150, { width: 50 });
 
   const { method, total } = payment;
   doc.font('Poppins-SemiBold')
