@@ -1,7 +1,7 @@
 const { connecter } = require("../bd/connect");
 const bcrypt = require('bcrypt');
 
-const {envoyerEmail} =   require('./mailer');
+const { sendWelcomeEmail } = require('./emailService');
 
 
 const ajouterUtilisateur = async (req, res) => {
@@ -13,6 +13,11 @@ const ajouterUtilisateur = async (req, res) => {
             nom: req.body.nom,
             prenom: req.body.prenom,
             email: req.body.email,
+            raison_sociale: req.body.raison_sociale,
+            sigle: req.body.sigle,
+            rccm: req.body.rccm,
+            ifu: req.body.ifu,
+            token_allouer:req.token_allouer,
             password: hashedPassword,
             status: 'user',
             pays: req.body.pays,
@@ -39,14 +44,18 @@ const ajouterUtilisateur = async (req, res) => {
                 }
 
                 if (req.body.password === req.body.confirmpassword) {
-                    connection.query('INSERT INTO users SET ?', utilisateur, (erreur, result) => {
+                    connection.query('INSERT INTO users SET ?', utilisateur, async (erreur, result) => {
                         if (erreur) {
                             console.error("Erreur lors de l'ajout de l'utilisateur :", erreur);
                             return res.status(500).json({ erreur: "Erreur lors de l'ajout de l'utilisateur" });
                         } else {
                             console.log("Utilisateur ajouté avec succès.");
-                            envoyerEmail(req.body.email, 'Bienvenue TO CONNECT', 'Merci de vous être inscrit à TO CONNECT.', '<p>Bienvenue sur TO CONNECT! Merci de vous être inscrit. Nous sommes ravis de vous avoir parmi nous.</p>');
-
+                            // Envoi de l'email de bienvenue
+                            try {
+                                await sendWelcomeEmail(req.body.email, req.body.nom, req.body.prenom);
+                            } catch (e) {
+                                console.error('Erreur lors de l\'envoi de l\'email de bienvenue :', e);
+                            }
                             return res.status(200).json(result);
                         }
                     });
@@ -71,7 +80,7 @@ const ajouterUtilisateur = async (req, res) => {
                     return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
                 }
     
-                connection.query('SELECT id,nom,prenom,email,whatsapp,status,actif,pays, password,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date from users', (erreur, results) => {
+                connection.query('SELECT id,nom,prenom,email,whatsapp,status,actif,pays,raison_sociale,sigle,rccm,ifu, password,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date from users', (erreur, results) => {
                     if (erreur) {
                         console.error("Erreur lors de la récupération des Utilisateurs :", erreur);
                         return res.status(500).json({ erreur: "Erreur lors de la récupération des users" });
@@ -179,7 +188,7 @@ const ajouterUtilisateur = async (req, res) => {
 
 const updateUtilisateur = async (req, res) => {
     try {
-        const { id, status, actif, nom, prenom, email, whatsapp,pays, password } = req.body;
+        const { id, status, actif, nom, prenom,email,raison_sociale,sigle,rccm, ifu,token_allouer,whatsapp,pays, password } = req.body;
         const date = new Date();
 
         if (!id) {
@@ -193,7 +202,12 @@ const updateUtilisateur = async (req, res) => {
         if (nom) Utilisateur.nom = nom;
         if (prenom) Utilisateur.prenom = prenom;
         if (email) Utilisateur.email = email;
+        if (raison_sociale) Utilisateur.raison_sociale = raison_sociale;
+        if (sigle) Utilisateur.sigle = sigle;
+        if (rccm) Utilisateur.rccm = rccm;
+        if (ifu) Utilisateur.ifu = ifu;
         if (whatsapp) Utilisateur.whatsapp = whatsapp;
+        if (token_allouer) Utilisateur.token_allouer = token_allouer;
         if (pays) Utilisateur.pays = pays;
         Utilisateur.updated_at = date;
 

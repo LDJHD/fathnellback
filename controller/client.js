@@ -11,7 +11,9 @@ const ajouterClient = async (req, res) => {
             adresse: req.body.adresse,
             ifu: req.body.ifu,
             created_at:date,
-            updated_at:date
+            updated_at:date,
+            user_id: req.user.id, // Ajout de l'id de l'utilisateur connecté
+            recevoir_mail: 1 // Valeur par défaut true
         };
 
         connecter((error, connection) => {

@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
 const { connecter } = require('./bd/connect');
 const path = require("path");
 const verifierNotifications = require("./cron/notification");
 const verifierNotificationsstock = require("./cron/notificationstock");
+const cleanupResetPassword = require('./cron/cleanupResetPassword');
 
 const app = express();
 
@@ -12,6 +14,718 @@ app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// === PROXY ROUTE POUR TRANSACTIONS ===
+const authenticateToken = require('./middleware/auth');
+
+
+app.get('/api/proxy/transactions', authenticateToken, async (req, res) => {
+  const { emp_code = '', start_time, end_time } = req.query;
+  const userId = req.user && req.user.id;
+  console.log('userId reçu:', userId); // Log userId
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      console.log('Résultat SQL pour userId:', userId, results); // Log résultat SQL
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        console.log('Aucun token trouvé pour userId:', userId); // Log si pas de token
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      console.log('Token alloué récupéré:', userToken); // Log token alloué
+      try {
+        const response = await axios.get('http://54.37.15.111:80/iclock/api/transactions/', {
+          params: { emp_code, start_time, end_time },
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Réponse API externe:', response.data); // Log réponse API externe
+        res.json(response.data);
+      } catch (err) {
+        console.error('Erreur API externe:', err.response?.data || err.message); // Log erreur API externe
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+// === FIN PROXY ===
+
+// Proxy pour récupérer la liste des employés avec le token alloué
+app.get('/api/proxy/employees', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  console.log('userId reçu:', userId);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      console.log('Résultat SQL pour userId:', userId, results);
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        console.log('Aucun token trouvé pour userId:', userId);
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      console.log('Token alloué récupéré:', userToken);
+      try {
+        const response = await axios.get('http://54.37.15.111:80/personnel/api/employees/', {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Réponse API externe:', response.data);
+        res.json(response.data);
+      } catch (err) {
+        console.error('Erreur API externe:', err.response?.data || err.message);
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// Voir un employé
+app.get('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get(`http://54.37.15.111:80/personnel/api/employees/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// Créer un employé
+app.post('/api/proxy/employees', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.post('http://54.37.15.111:80/personnel/api/employees/', req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// Modifier un employé
+app.patch('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/employees/${id}/`, req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// Supprimer un employé
+app.delete('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/employees/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// === PROXY DEPARTMENTS ===
+app.get('/api/proxy/departments', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get('http://54.37.15.111:80/personnel/api/departments/', {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.get('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get(`http://54.37.15.111:80/personnel/api/departments/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.post('/api/proxy/departments', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.post('http://54.37.15.111:80/personnel/api/departments/', req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.patch('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/departments/${id}/`, req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.delete('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/departments/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// === PROXY AREAS ===
+app.get('/api/proxy/areas', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get('http://54.37.15.111:80/personnel/api/areas/', {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.get('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get(`http://54.37.15.111:80/personnel/api/areas/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.post('/api/proxy/areas', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.post('http://54.37.15.111:80/personnel/api/areas/', req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.patch('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/areas/${id}/`, req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.delete('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/areas/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+// === PROXY POSITIONS ===
+app.get('/api/proxy/positions', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get('http://54.37.15.111:80/personnel/api/positions/', {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.get('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.get(`http://54.37.15.111:80/personnel/api/positions/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.post('/api/proxy/positions', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.post('http://54.37.15.111:80/personnel/api/positions/', req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.patch('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/positions/${id}/`, req.body, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
+app.delete('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
+  const userId = req.user && req.user.id;
+  const { id } = req.params;
+  if (!userId) {
+    return res.status(401).json({ error: 'Utilisateur non authentifié' });
+  }
+  connecter((error, connection) => {
+    if (error) {
+      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
+    }
+    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
+      }
+      if (!results || results.length === 0 || !results[0].token_allouer) {
+        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
+      }
+      const userToken = results[0].token_allouer;
+      try {
+        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/positions/${id}/`, {
+          headers: {
+            'Authorization': `Token ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        res.json(response.data);
+      } catch (err) {
+        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
+      }
+    });
+  });
+});
+
 // Connexion à la base de données une seule fois
 connecter((erreur, pool) => {
     if (erreur) {
@@ -19,8 +733,9 @@ connecter((erreur, pool) => {
         process.exit(-1);
     } else {
         console.log("✅ Connexion MySQL établie.");
-        app.listen(5000, () => {
-            console.log("🚀 Serveur démarré sur le port 5000.");
+        const PORT = process.env.PORT || 5050;
+        app.listen(PORT, '127.0.0.1', () => {
+            console.log(`🚀 Serveur démarré sur le port ${PORT}.`);
         });
     }
 });
@@ -45,8 +760,15 @@ const routes = [
     require("./route/invoice"),
     require("./route/supplement"),
     require("./route/notification"),
+    require("./route/resetPassword"),
+    require("./route/planning"),
+    require("./route/permissionconge"),
+    require("./route/retardabsence"),
+    require("./route/ponctualite"),
+    require("./route/presenceReport"),
+    require("./route/dashboard"),
 ];
-
+setInterval(cleanupResetPassword, 60 * 1000); // toutes les minutes
 verifierNotifications();
 verifierNotificationsstock();
 
