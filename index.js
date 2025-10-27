@@ -19,7 +19,7 @@ const authenticateToken = require('./middleware/auth');
 
 
 app.get('/api/proxy/transactions', authenticateToken, async (req, res) => {
-  const { emp_code = '', start_time, end_time } = req.query;
+  const { emp_code = '', start_time, end_time, page = 1 } = req.query;
   const userId = req.user && req.user.id;
   console.log('userId reçu:', userId); // Log userId
   if (!userId) {
@@ -42,7 +42,7 @@ app.get('/api/proxy/transactions', authenticateToken, async (req, res) => {
       console.log('Token alloué récupéré:', userToken); // Log token alloué
       try {
         const response = await axios.get('http://54.37.15.111:80/iclock/api/transactions/', {
-          params: { emp_code, start_time, end_time },
+          params: { emp_code, start_time, end_time, page },
           headers: {
             'Authorization': `Token ${userToken}`,
             'Content-Type': 'application/json',
@@ -62,7 +62,8 @@ app.get('/api/proxy/transactions', authenticateToken, async (req, res) => {
 // Proxy pour récupérer la liste des employés avec le token alloué
 app.get('/api/proxy/employees', authenticateToken, async (req, res) => {
   const userId = req.user && req.user.id;
-  console.log('userId reçu:', userId);
+  const page = req.query.page || 1; // Récupération du paramètre de page depuis la requête
+  console.log('userId reçu:', userId, 'page demandée:', page);
 
   if (!userId) {
     return res.status(401).json({ error: 'Utilisateur non authentifié' });
@@ -83,7 +84,11 @@ app.get('/api/proxy/employees', authenticateToken, async (req, res) => {
       const userToken = results[0].token_allouer;
       console.log('Token alloué récupéré:', userToken);
       try {
-        const response = await axios.get('http://54.37.15.111:80/personnel/api/employees/', {
+        // Construction de l'URL avec le paramètre de page
+        const apiUrl = `http://54.37.15.111:80/personnel/api/employees/?page=${page}`;
+        console.log('URL API avec pagination:', apiUrl);
+        
+        const response = await axios.get(apiUrl, {
           headers: {
             'Authorization': `Token ${userToken}`,
             'Content-Type': 'application/json',

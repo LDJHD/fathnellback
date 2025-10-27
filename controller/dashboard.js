@@ -31,6 +31,30 @@ const getDashboardStats = async (req, res) => {
           const startOfDay = `${todayStr} 00:00:00`;
           const endOfDay = `${todayStr} 23:59:59`;
 
+          // Récupérer le nombre total d'employés sans pagination
+          const totalEmployees = await new Promise((resolve) => {
+            try {
+              axios.get('http://54.37.15.111:80/personnel/api/employees/', {
+                headers: {
+                  'Authorization': `Token ${userToken}`,
+                  'Content-Type': 'application/json',
+                },
+              })
+              .then(response => {
+                // Récupérer le nombre total d'employés à partir du champ count
+                const totalCount = response.data.count || 0;
+                resolve(totalCount);
+              })
+              .catch(error => {
+                console.error('Erreur lors de la récupération du nombre total d\'employés:', error.message);
+                resolve(0);
+              });
+            } catch (error) {
+              console.error('Erreur lors de la récupération du nombre total d\'employés:', error.message);
+              resolve(0);
+            }
+          });
+
           // 1. Statistiques des permissions et congés
           const permissionsStats = await new Promise((resolve) => {
             // Détecter dynamiquement le nom de la colonne type (type_demande vs type)
@@ -221,7 +245,7 @@ const getDashboardStats = async (req, res) => {
               refuses: permissionsStats.conges_refuses || 0
             },
             presence: {
-              total_employes: employees.length,
+              total_employes: totalEmployees,
               presents_aujourd_hui: presenceStats.presents,
               absents_aujourd_hui: presenceStats.absents,
               retards_aujourd_hui: presenceStats.retards,
