@@ -501,7 +501,7 @@ const generatePresenceReport = async (req, res) => {
 const sendEmailWithAttachment = async (to, subject, html, attachmentPath, filename) => {
   try {
     const mailOptions = {
-      from: `"CheckTime - Rapports" <${process.env.GMAIL_USER || 'contacttoconnect01@gmail.com'}>`,
+      from: `"fatnelle - Rapports" <${process.env.GMAIL_USER || 'contacttoconnect01@gmail.com'}>`,
       to,
       subject,
       html,
@@ -563,7 +563,7 @@ const getPresenceReportEmailTemplate = (clientName, startDate, endDate) => {
         
         <div style="border-top: 1px solid #ecf0f1; padding-top: 20px; margin-top: 30px;">
           <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
-            L'équipe CheckTime<br>
+            L'équipe fatnelle<br>
             Gestion des présences
           </p>
         </div>

@@ -1,807 +1,843 @@
-const { connecter } = require("../bd/connect");
+﻿const { connecter } = require("../bd/connect");
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Configuration de multer pour le stockage des images
+// Configuration multer pour les images de produits
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = 'public/uploads';
-        // Créer le dossier s'il n'existe pas
+        const uploadDir = 'public/uploads/produits';
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        // Générer un nom de fichier unique
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, 'produit-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
 const upload = multer({ 
     storage: storage,
     fileFilter: function (req, file, cb) {
-        // Accepter uniquement les images
         if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
             return cb(new Error('Seules les images sont autorisées!'), false);
         }
         cb(null, true);
     },
-    limits: {
-        fileSize: 5 * 1024 * 1024 // Limite à 5MB
-    }
-}).single('image'); // 'image' est le nom du champ dans le formulaire
+    limits: { fileSize: 5 * 1024 * 1024 }
+}).array('images', 10); // Jusqu'à 10 images
 
-// const ajouterProduit = async (req, res) => {
-//     try {
-//         const date = new Date;
-//         const produit = {
-//             nom: req.body.nom,
-//             description: req.body.description,
-//             categorie_id:req.body.categorie_id,
-//             prix: req.body.prix,
-//             code_barre:req.body.code_barre,
-//             created_at: date,
-//             updated_at: date
-//         };
-
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de l'ajout de produit :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
-//                 } else {
-//                     console.log("produit ajouté avec succès.");
-//                     return res.status(200).json(result);
-//                 }
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// }
-
-//Version utilisé recemment
-
-// const ajouterProduit = async (req, res) => {
-//     try {
-//         const date = new Date();
-//         const produit = {
-//             nom: req.body.nom,
-//             description: req.body.description,
-//             categorie_id: req.body.categorie_id,
-//             prix: req.body.prix,
-//             prix_achat: req.body.prix_achat,
-//             taxation: req.body.taxation,
-//             dateexpi: req.body.dateexpi,
-//             code_barre: req.body.code_barre,
-//             created_at: date,
-//             updated_at: date
-//         };
-
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de l'ajout de produit :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
-//                 }
-
-//                 // Récupérer le produit inséré avec son ID
-//                 const produitId = result.insertId;
-//                 connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
-                  
-//                     if (err) {
-//                         console.error("Erreur lors de la récupération du produit :", err);
-//                         return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
-//                     }
-                    
-//                     if (rows.length > 0) {
-//                         console.log("Produit ajouté avec succès :", rows[0]);
-//                         return res.status(201).json(rows[0]); // Renvoie le produit créé
-//                     } else {
-//                         return res.status(404).json({ erreur: "Produit non trouvé après l'insertion" });
-//                     }
-//                 });
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-
-// const listallProduit = async (req, res) => {
-//     try {
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             const query = `
-//             SELECT 
-//                 p.*, 
-//                 c.nom AS nom_categorie,
-//                 DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date
-//             FROM 
-//                 produit p
-//             LEFT JOIN 
-//                 categorie c ON p.categorie_id = c.id
-//             GROUP BY 
-//                 p.id,p.nom
-//         `;
-
-//         connection.query(query, (erreur, results) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de la récupération des produits :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de la récupération des catégories" });
-//                 } else {
-//                     return res.status(200).json(results);
-//                 }
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-// const ajouterProduit = async (req, res) => {
-//     try {
-//         const { code_barre, acceptdoublons } = req.body;
-
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             // Vérifier si un produit avec le même code_barre existe
-//             connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
-//                 if (err) {
-//                     console.error("Erreur lors de la vérification du code barre :", err);
-//                     return res.status(500).json({ erreur: "Erreur lors de la vérification du code barre" });
-//                 }
-
-//                 if (produits.length > 0 && acceptdoublons != 1) {
-//                     // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
-//                     return res.status(200).json({ existe: 1, produits });
-//                 }
-
-//                 // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
-//                 const date = new Date();
-//                 const produit = {
-//                     nom: req.body.nom,
-//                     description: req.body.description,
-//                     categorie_id: req.body.categorie_id,
-//                     prix: req.body.prix,
-//                     prix_achat: req.body.prix_achat,
-//                     taxation: req.body.taxation,
-//                     dateexpi: req.body.dateexpi,
-//                     code_barre: req.body.code_barre,
-//                     created_at: date,
-//                     updated_at: date
-//                 };
-
-//                 connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-//                     if (erreur) {
-//                         console.error("Erreur lors de l'ajout de produit :", erreur);
-//                         return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
-//                     }
-
-//                     const produitId = result.insertId;
-//                     connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
-//                         if (err) {
-//                             console.error("Erreur lors de la récupération du produit :", err);
-//                             return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
-//                         }
-
-//                         return res.status(201).json(rows[0]);
-//                     });
-//                 });
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-
+// Ajouter un produit
 const ajouterProduit = async (req, res) => {
-    try {
-        upload(req, res, async function(err) {
-            if (err) {
-                return res.status(400).json({ erreur: err.message });
+    upload(req, res, function(err) {
+        if (err) {
+            return res.status(400).json({ 
+                message: "Erreur lors de l'upload des images",
+                error: err.message 
+            });
+        }
+
+        const {
+            nom,
+            description,
+            prix,
+            prix_promo,
+            en_promo = false,
+            personnalisable = false,
+            stock_status = 'disponible',
+            code_barre,
+            collection_id,
+            categorie_id,
+            couleurs = [],
+            tailles = []
+        } = req.body;
+
+        // Conversion des booléens (FormData envoie des strings)
+        const enPromoBoolean = en_promo === 'true' || en_promo === true;
+        const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
+
+        if (!nom || !prix || !categorie_id) {
+            return res.status(400).json({ 
+                message: "Le nom, le prix et la catégorie sont requis" 
+            });
+        }
+
+        connecter((error, connection) => {
+            if (error) {
+                return res.status(500).json({ message: "Erreur de connexion à la base de données" });
             }
 
-            const { code_barre, nom, acceptdoublons } = req.body;
-            const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
-
-            connecter((error, connection) => {
-                if (error) {
-                    console.error("Erreur lors de la connexion à la base de données :", error);
-                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+            // Commencer une transaction
+            connection.beginTransaction((err) => {
+                if (err) {
+                    return res.status(500).json({ 
+                        message: "Erreur lors du démarrage de la transaction" 
+                    });
                 }
 
-                // Vérifier si un produit avec le même code_barre et le même nom existe
-                connection.query('SELECT * FROM produit WHERE code_barre = ? AND nom = ?', [code_barre, nom], (err, produits) => {
-                    if (err) {
-                        console.error("Erreur lors de la vérification du code-barres et du nom :", err);
-                        return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres et du nom" });
-                    }
+                // Insérer le produit
+                const insertProduitQuery = `
+                    INSERT INTO produits 
+                    (nom, description, prix, prix_promo, en_promo, personnalisable, stock_status, code_barre, collection_id, categorie_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
 
-                    if (produits.length > 0) {
-                        // Si un produit avec le même code-barres et le même nom existe déjà
-                        return res.status(200).json({ existe: 1, message: "Un produit de même nom existe déjà pour ce code-barres", produits });
-                    }
-
-                    // Vérifier si un produit avec le même code_barre existe
-                    connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (err, produits) => {
+                connection.query(
+                    insertProduitQuery,
+                    [nom, description, prix, prix_promo, enPromoBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id],
+                    (err, result) => {
                         if (err) {
-                            console.error("Erreur lors de la vérification du code-barres :", err);
-                            return res.status(500).json({ erreur: "Erreur lors de la vérification du code-barres" });
+                            return connection.rollback(() => {
+                                console.error("Erreur SQL:", err);
+                                res.status(500).json({ 
+                                    message: "Erreur lors de la création du produit",
+                                    error: err.message 
+                                });
+                            });
                         }
 
-                        if (produits.length > 0 && acceptdoublons != 1) {
-                            // Si des produits existent déjà et que acceptdoublons n'est pas envoyé, on envoie la liste
-                            return res.status(200).json({ existe: 1, produits });
+                        const produit_id = result.insertId;
+                        const promises = [];
+
+                        // Ajouter les images
+                        if (req.files && req.files.length > 0) {
+                            req.files.forEach((file, index) => {
+                                const insertImageQuery = `
+                                    INSERT INTO produit_images (produit_id, image_url, is_principal, ordre) 
+                                    VALUES (?, ?, ?, ?)
+                                `;
+                                
+                                promises.push(new Promise((resolve, reject) => {
+                                    connection.query(
+                                        insertImageQuery,
+                                        [produit_id, file.filename, index === 0, index + 1],
+                                        (err, result) => {
+                                            if (err) reject(err);
+                                            else resolve(result);
+                                        }
+                                    );
+                                }));
+                            });
                         }
 
-                        // Si aucun produit n'existe ou que l'utilisateur a accepté le doublon
-                        const date = new Date();
-                        const produit = {
-                            nom: req.body.nom,
-                            description: req.body.description,
-                            categorie_id: req.body.categorie_id,
-                            prix: req.body.prix,
-                            prix_achat: req.body.prix_achat,
-                            taxation: req.body.taxation,
-                            dateexpi: req.body.dateexpi,
-                            code_barre: req.body.code_barre,
-                            image: imagePath,
-                            created_at: date,
-                            updated_at: date
+                        // Ajouter les couleurs
+                        if (couleurs && couleurs.length > 0) {
+                            const couleursArray = Array.isArray(couleurs) ? couleurs : JSON.parse(couleurs);
+                            couleursArray.forEach(couleur_id => {
+                                const insertCouleurQuery = `
+                                    INSERT INTO produit_couleurs (produit_id, couleur_id) VALUES (?, ?)
+                                `;
+                                
+                                promises.push(new Promise((resolve, reject) => {
+                                    connection.query(
+                                        insertCouleurQuery,
+                                        [produit_id, couleur_id],
+                                        (err, result) => {
+                                            if (err) reject(err);
+                                            else resolve(result);
+                                        }
+                                    );
+                                }));
+                            });
+                        }
+
+                        // Ajouter les tailles
+                        if (tailles && tailles.length > 0) {
+                            const taillesArray = Array.isArray(tailles) ? tailles : JSON.parse(tailles);
+                            taillesArray.forEach(taille_id => {
+                                const insertTailleQuery = `
+                                    INSERT INTO produit_tailles (produit_id, taille_id) VALUES (?, ?)
+                                `;
+                                
+                                promises.push(new Promise((resolve, reject) => {
+                                    connection.query(
+                                        insertTailleQuery,
+                                        [produit_id, taille_id],
+                                        (err, result) => {
+                                            if (err) reject(err);
+                                            else resolve(result);
+                                        }
+                                    );
+                                }));
+                            });
+                        }
+
+                        Promise.all(promises)
+                            .then(() => {
+                                connection.commit((err) => {
+                                    if (err) {
+                                        return connection.rollback(() => {
+                                            res.status(500).json({ 
+                                                message: "Erreur lors de la validation du produit" 
+                                            });
+                                        });
+                                    }
+
+                                    res.status(201).json({
+                                        message: "Produit créé avec succès",
+                                        produit: {
+                                            id: produit_id,
+                                            nom,
+                                            prix,
+                                            images: req.files ? req.files.map(f => f.filename) : []
+                                        }
+                                    });
+                                });
+                            })
+                            .catch((err) => {
+                                connection.rollback(() => {
+                                    console.error("Erreur lors de l'ajout des caractéristiques:", err);
+                                    res.status(500).json({ 
+                                        message: "Erreur lors de l'ajout des caractéristiques du produit" 
+                                    });
+                                });
+                            });
+                    }
+                );
+            });
+        });
+    });
+};
+
+// Lister tous les produits avec filtres
+const listallProduit = async (req, res) => {
+    const { 
+        collection_id, 
+        categorie_id, 
+        personnalisable, 
+        en_promo,
+        prix_min,
+        prix_max,
+        search,
+        limit = 50,
+        offset = 0
+    } = req.query;
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        let whereClause = "WHERE 1=1";
+        let queryParams = [];
+
+        if (collection_id) {
+            whereClause += " AND p.collection_id = ?";
+            queryParams.push(collection_id);
+        }
+
+        if (categorie_id) {
+            whereClause += " AND p.categorie_id = ?";
+            queryParams.push(categorie_id);
+        }
+
+        if (personnalisable !== undefined) {
+            whereClause += " AND p.personnalisable = ?";
+            queryParams.push(personnalisable === 'true');
+        }
+
+        if (en_promo !== undefined) {
+            whereClause += " AND p.en_promo = ?";
+            queryParams.push(en_promo === 'true');
+        }
+
+        if (prix_min) {
+            whereClause += " AND p.prix >= ?";
+            queryParams.push(prix_min);
+        }
+
+        if (prix_max) {
+            whereClause += " AND p.prix <= ?";
+            queryParams.push(prix_max);
+        }
+
+        if (search) {
+            whereClause += " AND (p.nom LIKE ? OR p.description LIKE ?)";
+            queryParams.push(`%${search}%`, `%${search}%`);
+        }
+
+        const query = `
+            SELECT 
+                p.*,
+                c.nom as collection_nom,
+                cat.nom as categorie_nom,
+                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
+                (SELECT COUNT(*) FROM produit_images WHERE produit_id = p.id) as nombre_images
+            FROM produits p
+            LEFT JOIN collections c ON p.collection_id = c.id
+            LEFT JOIN categories cat ON p.categorie_id = cat.id
+            ${whereClause}
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        queryParams.push(parseInt(limit), parseInt(offset));
+
+        connection.query(query, queryParams, (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération des produits:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des produits",
+                    error: err.message 
+                });
+            }
+
+            // Compter le total pour la pagination
+            const countQuery = `SELECT COUNT(*) as total FROM produits p ${whereClause}`;
+            
+            connection.query(countQuery, queryParams.slice(0, -2), (err, countResults) => {
+                if (err) {
+                    console.error("Erreur lors du comptage:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors du comptage des produits" 
+                    });
+                }
+
+                res.status(200).json({
+                    message: "Produits récupérés avec succès",
+                    produits: results,
+                    pagination: {
+                        total: countResults[0].total,
+                        limit: parseInt(limit),
+                        offset: parseInt(offset),
+                        has_more: (parseInt(offset) + parseInt(limit)) < countResults[0].total
+                    }
+                });
+            });
+        });
+    });
+};
+
+// Détail d'un produit complet
+const detailProduit = async (req, res) => {
+    const { id } = req.body;
+
+    if (!id) {
+        return res.status(400).json({ message: "L'ID du produit est requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `
+            SELECT 
+                p.*,
+                c.nom as collection_nom,
+                c.description as collection_description,
+                cat.nom as categorie_nom,
+                cat.description as categorie_description
+            FROM produits p
+            LEFT JOIN collections c ON p.collection_id = c.id
+            LEFT JOIN categories cat ON p.categorie_id = cat.id
+            WHERE p.id = ?
+        `;
+
+        connection.query(query, [id], (err, produitResults) => {
+            if (err) {
+                console.error("Erreur lors de la récupération du produit:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération du produit",
+                    error: err.message 
+                });
+            }
+
+            if (produitResults.length === 0) {
+                return res.status(404).json({ message: "Produit non trouvé" });
+            }
+
+            const produit = produitResults[0];
+
+            // Récupérer les images
+            const imagesQuery = `SELECT * FROM produit_images WHERE produit_id = ? ORDER BY ordre ASC`;
+            
+            connection.query(imagesQuery, [id], (err, imagesResults) => {
+                if (err) {
+                    console.error("Erreur lors de la récupération des images:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors de la récupération des images" 
+                    });
+                }
+
+                // Récupérer les couleurs
+                const couleursQuery = `
+                    SELECT c.* FROM couleurs c
+                    JOIN produit_couleurs pc ON c.id = pc.couleur_id
+                    WHERE pc.produit_id = ?
+                    ORDER BY c.nom ASC
+                `;
+
+                connection.query(couleursQuery, [id], (err, couleursResults) => {
+                    if (err) {
+                        console.error("Erreur lors de la récupération des couleurs:", err);
+                        return res.status(500).json({ 
+                            message: "Erreur lors de la récupération des couleurs" 
+                        });
+                    }
+
+                    // Récupérer les tailles
+                    const taillesQuery = `
+                        SELECT t.* FROM tailles t
+                        JOIN produit_tailles pt ON t.id = pt.taille_id
+                        WHERE pt.produit_id = ?
+                        ORDER BY t.type, CAST(t.nom AS UNSIGNED), t.nom ASC
+                    `;
+
+                    connection.query(taillesQuery, [id], (err, taillesResults) => {
+                        if (err) {
+                            console.error("Erreur lors de la récupération des tailles:", err);
+                            return res.status(500).json({ 
+                                message: "Erreur lors de la récupération des tailles" 
+                            });
+                        }
+
+                        // Assembler la réponse complète
+                        const produitComplet = {
+                            ...produit,
+                            images: imagesResults,
+                            couleurs: couleursResults,
+                            tailles: taillesResults,
+                            collection: produit.collection_nom ? {
+                                nom: produit.collection_nom,
+                                description: produit.collection_description
+                            } : null,
+                            categorie: {
+                                nom: produit.categorie_nom,
+                                description: produit.categorie_description
+                            }
                         };
 
-                        connection.query('INSERT INTO produit SET ?', produit, (erreur, result) => {
-                            if (erreur) {
-                                console.error("Erreur lors de l'ajout de produit :", erreur);
-                                return res.status(500).json({ erreur: "Erreur lors de l'ajout de produit" });
-                            }
+                        // Nettoyer les champs redondants
+                        delete produitComplet.collection_nom;
+                        delete produitComplet.collection_description;
+                        delete produitComplet.categorie_nom;
+                        delete produitComplet.categorie_description;
 
-                            const produitId = result.insertId;
-                            connection.query('SELECT * FROM produit WHERE id = ?', [produitId], (err, rows) => {
-                                if (err) {
-                                    console.error("Erreur lors de la récupération du produit :", err);
-                                    return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
-                                }
-
-                                return res.status(201).json(rows[0]);
-                            });
+                        res.status(200).json({
+                            message: "Produit récupéré avec succès",
+                            produit: produitComplet
                         });
                     });
                 });
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
-
-
-
-const listallProduit = async (req, res) => {
-    try {
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-            }
-
-            // 1️⃣ Récupérer tous les produits
-            const queryProduits = `
-                SELECT 
-                    p.*, 
-                    c.nom AS nom_categorie,
-                    DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date,
-                    DATE_FORMAT(p.dateexpi, '%d/%m/%Y') AS date_expi,
-                    COALESCE(p.image, '/uploads/default-product.png') as image
-                FROM produit p
-                LEFT JOIN categorie c ON p.categorie_id = c.id
-                GROUP BY p.id, p.nom
-            `;
-
-            connection.query(queryProduits, (erreur, results) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération des produits :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération des produits" });
-                }
-
-                // 2️⃣ Récupérer tous les supplements liés aux produits
-                const querySupplements = `SELECT 
-                s.*, 
-                u.nom AS unit
-            FROM supplement s
-            LEFT JOIN unit u ON s.unit = u.id`;
-
-                connection.query(querySupplements, (err, supplements) => {
-                    if (err) {
-                        console.error("Erreur lors de la récupération des supplements :", err);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération des supplements" });
-                    }
-
-                    // 3️⃣ Ajouter les supplements correspondants à chaque produit
-                    results.forEach(produit => {
-                        produit.supplements = supplements.filter(supp => supp.produit_id === produit.id);
-                    });
-
-                    return res.status(200).json(results);
-                });
-            });
-        });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
-};
-
-
-const listallProduitpagine = async (req, res) => {
-    try {
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-            }
-
-            // Récupérer les paramètres depuis le body
-            const { nombre = 10, page = 1 } = req.body;
-
-            console.log("Valeur de nombre :", nombre);
-            console.log("Valeur de page :", page);
-
-            // Calcul de LIMIT et OFFSET
-            const limit = parseInt(nombre, 10);
-            const offset = (parseInt(page, 10) - 1) * limit;
-
-            console.log("Valeur de LIMIT :", limit);
-            console.log("Valeur de OFFSET :", offset);
-
-            const query = `
-                SELECT 
-                    p.*, 
-                    c.nom AS nom_categorie,
-                    DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS date
-                FROM 
-                    produit p
-                LEFT JOIN 
-                    categorie c ON p.categorie_id = c.id
-                ORDER BY 
-                    p.created_at DESC
-                LIMIT ? OFFSET ?
-            `;
-
-            connection.query(query, [limit, offset], (erreur, results) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération des produits :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération des produits" });
-                } else {
-                    console.log("Résultats retournés :", results.length);
-                    return res.status(200).json(results);
-                }
-            });
-        });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
-};
-
-  
-
-
-
-
-const updateProduit = async (req, res) => {
-    try {
-        upload(req, res, async function(err) {
-            if (err) {
-                return res.status(400).json({ erreur: err.message });
-            }
-
-            const {id, nom, description, prix, prix_achat, taxation, dateexpi, categorie_id, code_barre} = req.body;
-            const date = new Date;
-            
-            // Gérer l'image
-            let imagePath;
-            if (req.file) {
-                // Si un nouveau fichier est téléchargé
-                imagePath = `/uploads/${req.file.filename}`;
-            } else if (req.body.image === 'null') {
-                // Si l'utilisateur a explicitement demandé de supprimer l'image
-                imagePath = null;
-            }
-            // Sinon, imagePath reste undefined et l'image existante est conservée
-
-            if (!id) {
-                return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
-            }
-
-            const produit = {
-                nom,
-                description,
-                prix,
-                prix_achat,
-                taxation,
-                dateexpi,
-                categorie_id,
-                code_barre,
-                updated_at: date,
-            };
-
-            // Ajouter l'image seulement si une nouvelle image est téléchargée ou si l'image doit être supprimée
-            if (imagePath !== undefined) {
-                produit.image = imagePath;
-            }
-            
-            connecter((error, connection) => {
-                if (error) {
-                    console.error("Erreur lors de la connexion à la base de données :", error);
-                    return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-                }
-
-                const updateQuery = 'UPDATE produit SET ? WHERE id = ? ';
-                connection.query(updateQuery, [produit, id], (erreur, result) => {
-                    if (erreur) {
-                        console.error("Erreur lors de la mise à jour de produit :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la mise à jour de produit" });
-                    } else {
-                        if (result.affectedRows === 0) {
-                            return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID" });
-                        }
-                        console.log("produit mis à jour avec succès.");
-                        return res.status(200).json({ message: "Mise à jour réussie", result });
-                    }
-                });
-            });
-        });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
-};
-
-
+// Détail par code barre (fonction existante adaptée)
 const detailProduitScan = async (req, res) => {
-    try {
-        const code_barre = req.body.code_barre;
+    const { code_barre } = req.body;
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+    if (!code_barre) {
+        return res.status(400).json({ message: "Le code barre est requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `SELECT * FROM produits WHERE code_barre = ?`;
+
+        connection.query(query, [code_barre], (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération du produit" 
+                });
             }
 
-            connection.query('SELECT * FROM produit WHERE code_barre = ?', [code_barre], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération du code barre :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération du code barre" });
-                } else {
-                    return res.status(200).json(result);
-                }
+            if (results.length === 0) {
+                return res.status(404).json({ message: "Produit non trouvé" });
+            }
+
+            res.status(200).json({
+                message: "Produit récupéré avec succès",
+                produit: results[0]
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
-
+// Filtre par code barre ou ID (fonction existante adaptée)
 const filtreBycodebarreorid = async (req, res) => {
-    try {
-        const { valeur } = req.body; // Une seule valeur envoyée
+    const { code_barre, id } = req.body;
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+    if (!code_barre && !id) {
+        return res.status(400).json({ message: "Code barre ou ID requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        let query = `SELECT * FROM produits WHERE `;
+        let params = [];
+
+        if (id) {
+            query += `id = ?`;
+            params.push(id);
+        } else {
+            query += `code_barre = ?`;
+            params.push(code_barre);
+        }
+
+        connection.query(query, params, (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération du produit" 
+                });
             }
 
-            // Requête SQL avec jointure pour inclure la catégorie
-            const query = `
-                SELECT produit.*, categorie.nom AS nom_categorie 
-                FROM produit 
-                LEFT JOIN categorie ON produit.categorie_id = categorie.id
-                WHERE produit.code_barre LIKE ? 
-                   OR produit.nom LIKE ?
-                   OR categorie.nom LIKE ?
-            `;
-            const values = [`%${valeur}%`, `%${valeur}%`, `%${valeur}%`];
-
-            connection.query(query, values, (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération des produits :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération des produits" });
-                }
-
-                if (result.length === 0) {
-                    return res.status(404).json({ message: "Aucun produit trouvé" });
-                }
-
-                return res.status(200).json(result);
+            res.status(200).json({
+                message: "Produits récupérés avec succès",
+                produits: results
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
+// Supprimer un produit
+const deleteProduit = async (req, res) => {
+    const { id } = req.body;
 
-// const filtreBycodebarreorid = async (req, res) => {
-//     try {
-//         const { valeur } = req.body; // Une seule valeur envoyée
+    if (!id) {
+        return res.status(400).json({ message: "L'ID est requis" });
+    }
 
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
 
-//             // Requête SQL pour chercher dans les deux colonnes
-//             const query = `
-//                 SELECT * 
-//                 FROM produit 
-//                 WHERE code_barre LIKE ? 
-//                    OR nom LIKE ?
-//             `;
-//             const values = [`%${valeur}%`, `%${valeur}%`];
+        const query = `DELETE FROM produits WHERE id = ?`;
 
-//             connection.query(query, values, (erreur, result) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de la récupération des produits :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de la récupération des produits" });
-//                 }
-
-//                 if (result.length === 0) {
-//                     return res.status(404).json({ message: "Aucun produit trouvé" });
-//                 }
-
-//                 return res.status(200).json(result);
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-
-// const detailProduit = async (req, res) => { 
-//     try {
-//         const id = req.body.id;
-
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             connection.query('SELECT * FROM produit WHERE id = ?', [id], (erreur, result) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de la récupération du produit :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
-//                 } else {
-//                     return res.status(200).json(result[0]);  // Renvoie le premier produit directement
-//                 }
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-// const detailProduit = async (req, res) => {
-//     try {
-//         const id = req.body.id;
-
-//         connecter((error, connection) => {
-//             if (error) {
-//                 console.error("Erreur lors de la connexion à la base de données :", error);
-//                 return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-//             }
-
-//             // Requête avec jointures et comptage des ventes
-//             const query = `
-//                 SELECT 
-//                     p.*, 
-//                      DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s'),
-//                     s.quantite_stock AS stock_quantite, 
-//                     s.created_at AS stock_created_at,
-//                     COUNT(v.id) AS total_ventes  -- Comptage des ventes pour ce produit
-//                 FROM 
-//                     produit p
-//                 LEFT JOIN 
-//                     stock s ON p.id = s.produit_id
-//                 LEFT JOIN 
-//                     details_vente v ON p.id = v.produit_id
-//                 WHERE 
-//                     p.id = ?
-//                 GROUP BY 
-//                     p.id, s.quantite_stock, s.created_at`;
-
-//             connection.query(query, [id], (erreur, result) => {
-//                 if (erreur) {
-//                     console.error("Erreur lors de la récupération des données :", erreur);
-//                     return res.status(500).json({ erreur: "Erreur lors de la récupération des données" });
-//                 } else {
-//                     if (result.length === 0) {
-//                         return res.status(404).json({ erreur: "Produit non trouvé" });
-//                     }
-//                     return res.status(200).json(result[0]); // Renvoie les données combinées
-//                 }
-//             });
-//         });
-//     } catch (error) {
-//         console.error("Erreur serveur :", error);
-//         return res.status(500).json({ erreur: "Erreur serveur" });
-//     }
-// };
-
-
-const detailProduit = async (req, res) => {
-    try {
-        const id = req.body.id;
-
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        connection.query(query, [id], (err, result) => {
+            if (err) {
+                console.error("Erreur lors de la suppression:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la suppression du produit" 
+                });
             }
 
-            // 1️⃣ Récupérer les détails du produit avec stock et nombre de ventes
-            const queryProduit = `
-                SELECT 
-                    p.*, 
-                    DATE_FORMAT(p.created_at, '%d/%m/%Y %H:%i:%s') AS created_at,
-                    s.quantite_stock AS stock_quantite,
-                    c.id AS iden_categorie,
-                    c.nom AS nom_categorie,
-                    s.created_at AS stock_created_at,
-                    COUNT(v.id) AS total_ventes  
-                FROM 
-                    produit p
-                LEFT JOIN 
-                    stock s ON p.id = s.produit_id
-                LEFT JOIN 
-                    details_vente v ON p.id = v.produit_id
-                    LEFT JOIN 
-                    categorie c ON p.categorie_id = c.id
-                WHERE 
-                    p.id = ?
-                GROUP BY 
-                    p.id, s.quantite_stock, s.created_at`;
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: "Produit non trouvé" });
+            }
 
-            connection.query(queryProduit, [id], (erreur, resultProduit) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération du produit :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération du produit" });
-                }
+            res.status(200).json({
+                message: "Produit supprimé avec succès"
+            });
+        });
+    });
+};
 
-                if (resultProduit.length === 0) {
-                    return res.status(404).json({ erreur: "Produit non trouvé" });
-                }
+// Liste paginée (fonction existante adaptée)
+const listallProduitpagine = async (req, res) => {
+    const { page = 1, limit = 10 } = req.body;
+    const offset = (page - 1) * limit;
 
-                const produit = resultProduit[0]; // Récupérer les infos du produit
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
 
-                // 2️⃣ Récupérer tous les suppléments liés à ce produit
-                const querySupplements = `SELECT 
-                s.*, 
-                u.nom AS unit,
-                u.id AS unit_id
-            FROM supplement s
-            LEFT JOIN unit u ON s.unit = u.id
-            WHERE s.produit_id = ?
-            `;
+        const query = `
+            SELECT 
+                p.*,
+                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
+            FROM produits p
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        `;
 
-                connection.query(querySupplements, [id], (erreur, resultSupplements) => {
-                    if (erreur) {
-                        console.error("Erreur lors de la récupération des suppléments :", erreur);
-                        return res.status(500).json({ erreur: "Erreur lors de la récupération des suppléments" });
-                    }
+        connection.query(query, [parseInt(limit), parseInt(offset)], (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des produits" 
+                });
+            }
 
-                    // 3️⃣ Construire et envoyer la réponse complète
-                    return res.status(200).json({
-                        produit,       // Infos du produit
-                        supplements: resultSupplements, // Liste des suppléments liés au produit
+            // Compter le total
+            const countQuery = `SELECT COUNT(*) as total FROM produits`;
+            
+            connection.query(countQuery, (err, countResults) => {
+                if (err) {
+                    console.error("Erreur lors du comptage:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors du comptage des produits" 
                     });
+                }
+
+                res.status(200).json({
+                    message: "Produits récupérés avec succès",
+                    produits: results,
+                    pagination: {
+                        current_page: parseInt(page),
+                        total_pages: Math.ceil(countResults[0].total / limit),
+                        total_items: countResults[0].total,
+                        items_per_page: parseInt(limit)
+                    }
                 });
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
+// Mettre à jour un produit
+const updateProduit = async (req, res) => {
+    upload(req, res, function(err) {
+        if (err) {
+            return res.status(400).json({ 
+                message: "Erreur lors de l'upload des images",
+                error: err.message 
+            });
+        }
 
-const listUserProduit = async (req, res) => {
-    try {
-        const userid = req.body.user_id;
+        const {
+            id,
+            nom,
+            description,
+            prix,
+            prix_promo,
+            en_promo = false,
+            personnalisable = false,
+            stock_status = 'disponible',
+            code_barre,
+            collection_id,
+            categorie_id,
+            couleurs = [],
+            tailles = []
+        } = req.body;
+
+        // Conversion des booléens (FormData envoie des strings)
+        const enPromoBoolean = en_promo === 'true' || en_promo === true;
+        const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
+
+        if (!id) {
+            return res.status(400).json({ 
+                message: "L'ID du produit est requis" 
+            });
+        }
+
+        if (!nom || !prix || !categorie_id) {
+            return res.status(400).json({ 
+                message: "Le nom, le prix et la catégorie sont requis" 
+            });
+        }
 
         connecter((error, connection) => {
             if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+                return res.status(500).json({ message: "Erreur de connexion à la base de données" });
             }
 
-            connection.query('SELECT * FROM produit WHERE user_id = ?', [userid], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la recuperation des enregistrement de cet utilisteurs :", erreur);
-                    return res.status(500).json({ erreur: "Erreur  lors de la recuperation  des enregistrement de cet utilisteurs" });
-                } else {
-                    return res.status(200).json(result);
+            // Commencer une transaction
+            connection.beginTransaction((err) => {
+                if (err) {
+                    return res.status(500).json({ 
+                        message: "Erreur lors du démarrage de la transaction" 
+                    });
                 }
+
+                // Mettre à jour le produit
+                const updateProduitQuery = `
+                    UPDATE produits 
+                    SET nom = ?, description = ?, prix = ?, prix_promo = ?, en_promo = ?, 
+                        personnalisable = ?, stock_status = ?, code_barre = ?, collection_id = ?, categorie_id = ?, updated_at = NOW()
+                    WHERE id = ?
+                `;
+
+                connection.query(
+                    updateProduitQuery,
+                    [nom, description, prix, prix_promo, enPromoBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id, id],
+                    (err, result) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                console.error("Erreur SQL:", err);
+                                res.status(500).json({ 
+                                    message: "Erreur lors de la mise à jour du produit",
+                                    error: err.message 
+                                });
+                            });
+                        }
+
+                        if (result.affectedRows === 0) {
+                            return connection.rollback(() => {
+                                res.status(404).json({ message: "Produit non trouvé" });
+                            });
+                        }
+
+                        const promises = [];
+
+                        // Ajouter nouvelles images si fournies
+                        if (req.files && req.files.length > 0) {
+                            // Récupérer le nombre d'images existantes pour l'ordre
+                            const getImageCountQuery = `SELECT COUNT(*) as count FROM produit_images WHERE produit_id = ?`;
+                            
+                            promises.push(new Promise((resolve, reject) => {
+                                connection.query(getImageCountQuery, [id], (err, countResult) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+                                    
+                                    const startOrder = countResult[0].count;
+                                    const imagePromises = [];
+                                    
+                                    req.files.forEach((file, index) => {
+                                        const insertImageQuery = `
+                                            INSERT INTO produit_images (produit_id, image_url, is_principal, ordre) 
+                                            VALUES (?, ?, ?, ?)
+                                        `;
+                                        
+                                        imagePromises.push(new Promise((resolveImage, rejectImage) => {
+                                            connection.query(
+                                                insertImageQuery,
+                                                [id, file.filename, startOrder === 0 && index === 0, startOrder + index + 1],
+                                                (err, result) => {
+                                                    if (err) rejectImage(err);
+                                                    else resolveImage(result);
+                                                }
+                                            );
+                                        }));
+                                    });
+                                    
+                                    Promise.all(imagePromises).then(resolve).catch(reject);
+                                });
+                            }));
+                        }
+
+                        // Mettre à jour les couleurs
+                        if (couleurs && couleurs.length >= 0) {
+                            // Supprimer les anciennes couleurs
+                            promises.push(new Promise((resolve, reject) => {
+                                const deleteCouleurQuery = `DELETE FROM produit_couleurs WHERE produit_id = ?`;
+                                connection.query(deleteCouleurQuery, [id], (err, result) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    // Ajouter les nouvelles couleurs
+                                    if (couleurs.length > 0) {
+                                        const couleursArray = Array.isArray(couleurs) ? couleurs : JSON.parse(couleurs);
+                                        const couleurPromises = [];
+                                        
+                                        couleursArray.forEach(couleur_id => {
+                                            const insertCouleurQuery = `
+                                                INSERT INTO produit_couleurs (produit_id, couleur_id) VALUES (?, ?)
+                                            `;
+                                            
+                                            couleurPromises.push(new Promise((resolveCouleur, rejectCouleur) => {
+                                                connection.query(
+                                                    insertCouleurQuery,
+                                                    [id, couleur_id],
+                                                    (err, result) => {
+                                                        if (err) rejectCouleur(err);
+                                                        else resolveCouleur(result);
+                                                    }
+                                                );
+                                            }));
+                                        });
+                                        
+                                        Promise.all(couleurPromises).then(resolve).catch(reject);
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            }));
+                        }
+
+                        // Mettre à jour les tailles
+                        if (tailles && tailles.length >= 0) {
+                            // Supprimer les anciennes tailles
+                            promises.push(new Promise((resolve, reject) => {
+                                const deleteTailleQuery = `DELETE FROM produit_tailles WHERE produit_id = ?`;
+                                connection.query(deleteTailleQuery, [id], (err, result) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    // Ajouter les nouvelles tailles
+                                    if (tailles.length > 0) {
+                                        const taillesArray = Array.isArray(tailles) ? tailles : JSON.parse(tailles);
+                                        const taillePromises = [];
+                                        
+                                        taillesArray.forEach(taille_id => {
+                                            const insertTailleQuery = `
+                                                INSERT INTO produit_tailles (produit_id, taille_id) VALUES (?, ?)
+                                            `;
+                                            
+                                            taillePromises.push(new Promise((resolveTaille, rejectTaille) => {
+                                                connection.query(
+                                                    insertTailleQuery,
+                                                    [id, taille_id],
+                                                    (err, result) => {
+                                                        if (err) rejectTaille(err);
+                                                        else resolveTaille(result);
+                                                    }
+                                                );
+                                            }));
+                                        });
+                                        
+                                        Promise.all(taillePromises).then(resolve).catch(reject);
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            }));
+                        }
+
+                        Promise.all(promises)
+                            .then(() => {
+                                connection.commit((err) => {
+                                    if (err) {
+                                        return connection.rollback(() => {
+                                            res.status(500).json({ 
+                                                message: "Erreur lors de la validation de la mise à jour" 
+                                            });
+                                        });
+                                    }
+
+                                    res.status(200).json({
+                                        message: "Produit mis à jour avec succès",
+                                        produit: {
+                                            id,
+                                            nom,
+                                            prix,
+                                            images: req.files ? req.files.map(f => f.filename) : []
+                                        }
+                                    });
+                                });
+                            })
+                            .catch((err) => {
+                                connection.rollback(() => {
+                                    console.error("Erreur lors de la mise à jour des caractéristiques:", err);
+                                    res.status(500).json({ 
+                                        message: "Erreur lors de la mise à jour des caractéristiques du produit" 
+                                    });
+                                });
+                            });
+                    }
+                );
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
-};
-
-const deleteProduit = async (req, res) => {
-    try {
-        const id = req.body.id;
-
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-            }
-
-            connection.query('DELETE FROM produit WHERE id = ?', [id], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération de la catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération de la catégorie" });
-                } else {
-                    return res.status(200).json(result);
-                }
-            });
-        }); 
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
 module.exports = {
     ajouterProduit,
     listallProduit,
     detailProduit,
-    deleteProduit,
-    listUserProduit,
-    updateProduit,
     detailProduitScan,
     filtreBycodebarreorid,
+    deleteProduit,
+    updateProduit,
     listallProduitpagine
 };

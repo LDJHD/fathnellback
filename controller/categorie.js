@@ -1,227 +1,330 @@
-// controller/categorie.js
-const { connecter } = require("../bd/connect");
+﻿const { connecter } = require("../bd/connect");
 
+// Lister toutes les catégories
+const listallCategories = async (req, res) => {
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `
+            SELECT 
+                c.*,
+                COUNT(p.id) as produits_count,
+                parent.nom as parent_nom
+            FROM categories c
+            LEFT JOIN produits p ON c.id = p.categorie_id
+            LEFT JOIN categories parent ON c.parent_id = parent.id
+            GROUP BY c.id
+            ORDER BY c.nom ASC
+        `;
+
+        connection.query(query, (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération des catégories:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des catégories",
+                    error: err.message 
+                });
+            }
+
+            res.status(200).json({
+                message: "Catégories récupérées avec succès",
+                categories: results
+            });
+        });
+    });
+};
+
+// Ajouter une catégorie
 const ajouterCategorie = async (req, res) => {
-    const date=new Date();
-    try {
-        const categorie = {
-            nom: req.body.nom,
-            created_at:date,
-            updated_at:date,
+    const { nom, description, parent_id } = req.body;
+
+    if (!nom) {
+        return res.status(400).json({ message: "Le nom est requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
         }
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        const query = `INSERT INTO categories (nom, description, parent_id) VALUES (?, ?, ?)`;
+
+        connection.query(query, [nom, description, parent_id], (err, result) => {
+            if (err) {
+                console.error("Erreur lors de l'ajout:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'ajout de la catégorie",
+                    error: err.message 
+                });
             }
 
-            connection.query('INSERT INTO categorie SET ?', categorie, (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de l'ajout de la catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de l'ajout de la catégorie" });
-                } else {
-                    console.log("Catégorie ajoutée avec succès.");
-                    return res.status(200).json(result);
+            res.status(201).json({
+                message: "Catégorie ajoutée avec succès",
+                categorie: {
+                    id: result.insertId,
+                    nom,
+                    description,
+                    parent_id
                 }
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
-const listallCategorie = async (req, res) => {
-    try {
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-            }
-
-            connection.query('SELECT id,nom ,DATE_FORMAT(created_at, "%d/%m/%Y %H:%i:%s") AS date_creation FROM categorie', (erreur, results) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération des catégories :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération des catégories" });
-                } else {
-                    return res.status(200).json(results);
-                }
-            });
-        });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
-};
-
+// Détail d'une catégorie
 const detailCategorie = async (req, res) => {
-    try {
-        const id = req.body.id;
+    const { id } = req.body;
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
-            }
-
-            connection.query('SELECT * FROM categorie WHERE id = ?', [id], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération de la catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération de la catégorie" });
-                } else {
-                    if (result.length === 0) {
-                        return res.status(404).json({ erreur: "categorie non trouvé" });
-                    }
-                    return res.status(200).json(result[0]); // Renvoie les données combinées
-                }
-            });
-        });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
+    if (!id) {
+        return res.status(400).json({ message: "L'ID est requis" });
     }
-};
-//gggggg
-const updateCategorie = async (req, res) => {
-    try {
-        const date = new Date();
-        const { id } = req.body;
-        if (!id) {
-            return res.status(400).json({ erreur: "L'ID est requis pour la mise à jour" });
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
         }
 
-        // Liste des champs autorisés à être mis à jour
-        const fieldsToUpdate = ['id','nom'];
+        const query = `
+            SELECT 
+                c.*,
+                COUNT(p.id) as produits_count,
+                parent.nom as parent_nom
+            FROM categories c
+            LEFT JOIN produits p ON c.id = p.categorie_id
+            LEFT JOIN categories parent ON c.parent_id = parent.id
+            WHERE c.id = ?
+            GROUP BY c.id
+        `;
 
-        
-
-        // Filtrer les champs présents dans req.body
-        const updates = {};
-           fieldsToUpdate.forEach(field => {
-               if (req.body[field] !== undefined) {
-                   updates[field] = req.body[field];
-               }
-           });
-
-
-        //Mettre a jour la colonne udated_at
-        updates.updated_at=date;
-
-       
-        // Construire dynamiquement la requête SQL
-        const setClause = Object.keys(updates).map(field => `${field} = ?`).join(', ');
-        const values = Object.values(updates);
-        values.push(id);
-      
-
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        connection.query(query, [id], (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération de la catégorie" 
+                });
             }
 
-            const updateQuery = `UPDATE categorie SET ${setClause} WHERE id = ? `;
-            connection.query(updateQuery, values, (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la mise à jour de categorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la mise à jour de categorie" });
-                } else {
-                    if (result.affectedRows === 0) {
-                        return res.status(404).json({ message: "Aucun enregistrement trouvé avec cet ID et cet utilisateur" });
-                    }
-                    console.log("Categorie mis à jour avec succès.");
-                    return res.status(200).json({ message: "Mise à jour réussie", result });
+            if (results.length === 0) {
+                return res.status(404).json({ message: "Catégorie non trouvée" });
+            }
+
+            // Récupérer les sous-catégories
+            const childrenQuery = `SELECT * FROM categories WHERE parent_id = ?`;
+            
+            connection.query(childrenQuery, [id], (err, childrenResults) => {
+                if (err) {
+                    console.error("Erreur lors de la récupération des sous-catégories:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors de la récupération des sous-catégories" 
+                    });
                 }
+
+                const categorie = {
+                    ...results[0],
+                    children: childrenResults
+                };
+
+                res.status(200).json({
+                    message: "Catégorie récupérée avec succès",
+                    categorie
+                });
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
+// Modifier une catégorie
+const updateCategorie = async (req, res) => {
+    const { id, nom, description, parent_id } = req.body;
+
+    if (!id || !nom) {
+        return res.status(400).json({ message: "L'ID et le nom sont requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `
+            UPDATE categories 
+            SET nom = ?, description = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `;
+
+        connection.query(query, [nom, description, parent_id, id], (err, result) => {
+            if (err) {
+                console.error("Erreur lors de la modification:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la modification de la catégorie" 
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: "Catégorie non trouvée" });
+            }
+
+            res.status(200).json({
+                message: "Catégorie modifiée avec succès"
+            });
+        });
+    });
+};
+
+// Supprimer une catégorie
 const deleteCategorie = async (req, res) => {
-    try {
-        const id = req.body.id;
+    const { id } = req.body;
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+    if (!id) {
+        return res.status(400).json({ message: "L'ID est requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        // Vérifier s'il y a des produits dans cette catégorie
+        const checkQuery = `SELECT COUNT(*) as count FROM produits WHERE categorie_id = ?`;
+        
+        connection.query(checkQuery, [id], (err, checkResults) => {
+            if (err) {
+                console.error("Erreur lors de la vérification:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la vérification" 
+                });
             }
 
-            connection.query('DELETE FROM categorie WHERE id = ?', [id], (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors de la récupération de la catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors de la récupération de la catégorie" });
-                } else {
-                    return res.status(200).json(result);
+            if (checkResults[0].count > 0) {
+                return res.status(400).json({ 
+                    message: "Impossible de supprimer cette catégorie car elle contient des produits" 
+                });
+            }
+
+            // Vérifier s'il y a des sous-catégories
+            const checkChildrenQuery = `SELECT COUNT(*) as count FROM categories WHERE parent_id = ?`;
+            
+            connection.query(checkChildrenQuery, [id], (err, childrenResults) => {
+                if (err) {
+                    console.error("Erreur lors de la vérification des sous-catégories:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors de la vérification des sous-catégories" 
+                    });
                 }
+
+                if (childrenResults[0].count > 0) {
+                    return res.status(400).json({ 
+                        message: "Impossible de supprimer cette catégorie car elle contient des sous-catégories" 
+                    });
+                }
+
+                // Supprimer la catégorie
+                const deleteQuery = `DELETE FROM categories WHERE id = ?`;
+
+                connection.query(deleteQuery, [id], (err, result) => {
+                    if (err) {
+                        console.error("Erreur lors de la suppression:", err);
+                        return res.status(500).json({ 
+                            message: "Erreur lors de la suppression de la catégorie" 
+                        });
+                    }
+
+                    if (result.affectedRows === 0) {
+                        return res.status(404).json({ message: "Catégorie non trouvée" });
+                    }
+
+                    res.status(200).json({
+                        message: "Catégorie supprimée avec succès"
+                    });
+                });
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
-const countUserCategorie = async (req, res) => {
-    try {
-       
+// Récupérer les catégories principales (sans parent)
+const getCategoriesPrincipales = async (req, res) => {
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+        const query = `
+            SELECT 
+                c.*,
+                COUNT(p.id) as produits_count,
+                (SELECT COUNT(*) FROM categories WHERE parent_id = c.id) as children_count
+            FROM categories c
+            LEFT JOIN produits p ON c.id = p.categorie_id
+            WHERE c.parent_id IS NULL
+            GROUP BY c.id
+            ORDER BY c.nom ASC
+        `;
+
+        connection.query(query, (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des catégories principales" 
+                });
             }
 
-            connection.query('SELECT COUNT(*) AS count FROM categorie ', (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors du compte de catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors du compte de catégorie :" });
-                } else {
-                    return res.status(200).json(result);
-                }
+            res.status(200).json({
+                message: "Catégories principales récupérées avec succès",
+                categories: results
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
-const countCategorie = async (req, res) => {
-    try {
-       
+// Récupérer les sous-catégories d'une catégorie
+const getSousCategories = async (req, res) => {
+    const { parent_id } = req.body;
 
-        connecter((error, connection) => {
-            if (error) {
-                console.error("Erreur lors de la connexion à la base de données :", error);
-                return res.status(500).json({ erreur: "Erreur lors de la connexion à la base de données" });
+    if (!parent_id) {
+        return res.status(400).json({ message: "L'ID du parent est requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `
+            SELECT 
+                c.*,
+                COUNT(p.id) as produits_count
+            FROM categories c
+            LEFT JOIN produits p ON c.id = p.categorie_id
+            WHERE c.parent_id = ?
+            GROUP BY c.id
+            ORDER BY c.nom ASC
+        `;
+
+        connection.query(query, [parent_id], (err, results) => {
+            if (err) {
+                console.error("Erreur lors de la récupération:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des sous-catégories" 
+                });
             }
 
-            connection.query('SELECT COUNT(*) AS count FROM categorie ', (erreur, result) => {
-                if (erreur) {
-                    console.error("Erreur lors du compte de catégorie :", erreur);
-                    return res.status(500).json({ erreur: "Erreur lors du compte de catégorie :" });
-                } else {
-                    return res.status(200).json(result);
-                }
+            res.status(200).json({
+                message: "Sous-catégories récupérées avec succès",
+                categories: results
             });
         });
-    } catch (error) {
-        console.error("Erreur serveur :", error);
-        return res.status(500).json({ erreur: "Erreur serveur" });
-    }
+    });
 };
 
 module.exports = {
+    listallCategories,
     ajouterCategorie,
-    listallCategorie,
     detailCategorie,
-    deleteCategorie,
     updateCategorie,
-    countUserCategorie,
-    countCategorie
+    deleteCategorie,
+    getCategoriesPrincipales,
+    getSousCategories
 };

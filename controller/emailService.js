@@ -16,7 +16,7 @@ const getWelcomeEmailTemplate = (nom, prenom) => {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
       <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #2c3e50; margin: 0; font-size: 28px;">🎉 Bienvenue sur CheckTime !</h1>
+          <h1 style="color: #2c3e50; margin: 0; font-size: 28px;">🎉 Bienvenue sur fatnelle !</h1>
         </div>
         
         <div style="margin-bottom: 25px;">
@@ -27,12 +27,12 @@ const getWelcomeEmailTemplate = (nom, prenom) => {
         
         <div style="margin-bottom: 25px;">
           <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin: 0;">
-            Nous sommes ravis de vous accueillir sur <strong>CheckTime</strong>, votre plateforme de gestion complète pour votre entreprise.
+            Nous sommes ravis de vous accueillir sur <strong>fatnelle</strong>, votre plateforme de gestion complète pour votre entreprise.
           </p>
         </div>
         
         <div style="background-color: #ecf0f1; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-          <h3 style="color: #2c3e50; margin-top: 0;">🚀 Ce que vous pouvez faire avec CheckTime :</h3>
+          <h3 style="color: #2c3e50; margin-top: 0;">🚀 Ce que vous pouvez faire avec fatnelle :</h3>
           <ul style="color: #34495e; line-height: 1.8;">
             <li>Gérer vos produits et stocks</li>
             <li>Effectuer des ventes et générer des factures</li>
@@ -45,14 +45,14 @@ const getWelcomeEmailTemplate = (nom, prenom) => {
         <div style="text-align: center; margin-bottom: 25px;">
           <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
              style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-            Commencer à utiliser CheckTime
+            Commencer à utiliser fatnelle
           </a>
         </div>
         
         <div style="border-top: 1px solid #ecf0f1; padding-top: 20px; margin-top: 30px;">
           <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
             Si vous avez des questions, n'hésitez pas à nous contacter.<br>
-            L'équipe CheckTime
+            L'équipe fatnelle
           </p>
         </div>
       </div>
@@ -77,7 +77,7 @@ const getResetCodeEmailTemplate = (code, nom, prenom) => {
         
         <div style="margin-bottom: 25px;">
           <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin: 0;">
-            Vous avez demandé la réinitialisation de votre mot de passe sur CheckTime.
+            Vous avez demandé la réinitialisation de votre mot de passe sur fatnelle.
           </p>
         </div>
         
@@ -100,7 +100,7 @@ const getResetCodeEmailTemplate = (code, nom, prenom) => {
         
         <div style="border-top: 1px solid #ecf0f1; padding-top: 20px; margin-top: 30px;">
           <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
-            L'équipe CheckTime<br>
+            L'équipe fatnelle<br>
             Sécurité et support
           </p>
         </div>
@@ -126,7 +126,7 @@ const getPasswordChangedEmailTemplate = (nom, prenom) => {
         
         <div style="margin-bottom: 25px;">
           <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin: 0;">
-            Votre mot de passe sur CheckTime a été modifié avec succès.
+            Votre mot de passe sur fatnelle a été modifié avec succès.
           </p>
         </div>
         
@@ -134,14 +134,14 @@ const getPasswordChangedEmailTemplate = (nom, prenom) => {
           <h3 style="color: #155724; margin-top: 0;">🔒 Sécurité confirmée</h3>
           <p style="color: #155724; margin: 0; line-height: 1.6;">
             Votre compte est maintenant sécurisé avec votre nouveau mot de passe. 
-            Vous pouvez vous connecter normalement à votre compte CheckTime.
+            Vous pouvez vous connecter normalement à votre compte fatnelle.
           </p>
         </div>
         
         <div style="text-align: center; margin-bottom: 25px;">
           <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
              style="background-color: #27ae60; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-            Se connecter à CheckTime
+            Se connecter à fatnelle
           </a>
         </div>
         
@@ -154,7 +154,7 @@ const getPasswordChangedEmailTemplate = (nom, prenom) => {
         
         <div style="border-top: 1px solid #ecf0f1; padding-top: 20px; margin-top: 30px;">
           <p style="color: #7f8c8d; font-size: 14px; text-align: center; margin: 0;">
-            L'équipe CheckTime<br>
+            L'équipe fatnelle<br>
             Sécurité et support
           </p>
         </div>
@@ -167,7 +167,7 @@ const getPasswordChangedEmailTemplate = (nom, prenom) => {
 const sendEmail = async (to, subject, html) => {
   try {
     const mailOptions = {
-      from: `"CheckTime" <${process.env.GMAIL_USER || 'contacttoconnect01@gmail.com'}>`,
+      from: `"fatnelle" <${process.env.GMAIL_USER || 'contacttoconnect01@gmail.com'}>`,
       to,
       subject,
       html
@@ -185,21 +185,21 @@ const sendEmail = async (to, subject, html) => {
 
 // Fonction pour envoyer l'email de bienvenue
 const sendWelcomeEmail = async (email, nom, prenom) => {
-  const subject = '🎉 Bienvenue sur CheckTime !';
+  const subject = '🎉 Bienvenue sur fatnelle !';
   const html = getWelcomeEmailTemplate(nom, prenom);
   return await sendEmail(email, subject, html);
 };
 
 // Fonction pour envoyer l'email de code de réinitialisation
 const sendResetCodeEmail = async (email, code, nom, prenom) => {
-  const subject = '🔐 Code de réinitialisation - CheckTime';
+  const subject = '🔐 Code de réinitialisation - fatnelle';
   const html = getResetCodeEmailTemplate(code, nom, prenom);
   return await sendEmail(email, subject, html);
 };
 
 // Fonction pour envoyer l'email de confirmation de changement de mot de passe
 const sendPasswordChangedEmail = async (email, nom, prenom) => {
-  const subject = '✅ Mot de passe mis à jour - CheckTime';
+  const subject = '✅ Mot de passe mis à jour - fatnelle';
   const html = getPasswordChangedEmailTemplate(nom, prenom);
   return await sendEmail(email, subject, html);
 };

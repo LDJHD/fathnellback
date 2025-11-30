@@ -1,0 +1,53 @@
+require('dotenv').config({ path: './config.env' });
+const mysql = require('mysql');
+
+let pool = null; // Stocke l'instance unique du pool
+
+function connecter(callback) {
+    if (!pool) {
+        // Configuration adaptée à votre config.env existant
+        const dbConfig = {
+            connectionLimit: 10,
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || '',
+            database: process.env.DB_NAME || 'fatnelle',
+            port: process.env.DB_PORT || 3306,
+            acquireTimeout: 60000,
+            timeout: 60000,
+            reconnect: true,
+            charset: 'utf8mb4'
+        };
+
+        console.log('🔧 Création du pool MySQL avec config:', {
+            host: dbConfig.host,
+            user: dbConfig.user,
+            database: dbConfig.database,
+            port: dbConfig.port
+        });
+
+        pool = mysql.createPool(dbConfig);
+
+        // Gestion des erreurs du pool
+        pool.on('connection', function (connection) {
+            console.log('✅ Nouvelle connexion MySQL établie:', connection.threadId);
+        });
+
+        pool.on('error', function(err) {
+            console.error('❌ Erreur du pool MySQL:', err);
+            if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+                console.log('🔄 Tentative de reconnexion...');
+                pool = null; // Forcer la recréation du pool
+            }
+        });
+
+        console.log("✅ Pool de connexions MySQL créé.");
+    } else {
+        console.log("🔄 Pool de connexions MySQL réutilisé.");
+    }
+
+    // Retourner directement le pool sans test qui pourrait le fermer
+    return callback(null, pool);
+}
+
+module.exports = { connecter };

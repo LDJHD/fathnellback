@@ -15,12 +15,12 @@ const authenticateToken = require('../middleware/auth');
 const router = express.Router();
 
 router.post('/produit/create',authenticateToken, ajouterProduit); // Utilisez simplement `upload` comme middleware
-router.get('/produit/listall',authenticateToken, listallProduit);
-router.post('/produit/detailById',authenticateToken, detailProduit);
+router.get('/produit/listall', listallProduit);
+router.post('/produit/detailById', detailProduit);
 router.post('/produit/detailBycodebarre',authenticateToken, detailProduitScan);
 router.post('/produit/filtreBycodebarre',authenticateToken, filtreBycodebarreorid);
 router.post('/produit/delete',authenticateToken, deleteProduit);
-router.post('/produit/updateProduit',authenticateToken,updateProduit); // Utilisez `upload` ici aussi
-router.post('/produit/listall/paginate',authenticateToken, listallProduitpagine);
+router.post('/produit/updateProduit',updateProduit); // Utilisez `upload` ici aussi
+router.post('/produit/listall/paginate', listallProduitpagine);
 
 module.exports = router;

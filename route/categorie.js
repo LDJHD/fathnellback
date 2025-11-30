@@ -2,22 +2,29 @@
 
 const express = require('express');
 const {
+    listallCategories,
     ajouterCategorie,
-    listallCategorie,
     detailCategorie,
-    deleteCategorie,
     updateCategorie,
-    countUserCategorie,
-    countCategorie
+    deleteCategorie,
+    getCategoriesPrincipales,
+    getSousCategories
 } = require('../controller/categorie');
 const authenticateToken = require('../middleware/auth');
 const router = express.Router();
 
+// Routes publiques
+router.get('/categorie/listall', listallCategories);
+router.get('/categorie/principales', getCategoriesPrincipales);
+
+// Routes sans authentification
 router.post('/categorie/create',authenticateToken, ajouterCategorie);
-router.get('/categorie/listall',authenticateToken, listallCategorie);
-router.post('/categorie/detailById',authenticateToken, detailCategorie);
-router.post('/categorie/delete',authenticateToken, deleteCategorie);
+router.post('/categorie/detailById', detailCategorie);
+router.post('/categorie/delete', deleteCategorie);
 router.post('/categorie/update',authenticateToken, updateCategorie);
-router.post('/categorie/countUserCategorie',authenticateToken, countUserCategorie);
-router.get('/categorie/countCategorie', countCategorie);
+router.post('/categorie/sous-categories', getSousCategories);
+
+// Alias pour compatibilité
+router.get('/categorie/listall', listallCategories);
+router.post('/categorie/detailById', detailCategorie);
 module.exports = router;

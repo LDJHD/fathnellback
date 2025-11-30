@@ -1,36 +1,36 @@
 const express = require('express');
 const {
     ajouterVente,
-    ajouterTransaction,
-    listallVente,
+    listallVentes,
     detailVente,
-    deleteVente,
     updateVente,
-    listUserVente,
-    getventedayCount,
-    getventemontantdayCount,
-    listVentesearch,
-    listVenteProduitsearchSom,
-    getDailySales,
-    getWeeklySales,
-    getMonthlySales
-    
+    deleteVente,
+    statsVentes,
+    // Aliases pour compatibilité
+    listall,
+    detail,
+    update,
+    ajouter,
+    supprimer
 } = require('../controller/vente');
 const authenticateToken = require('../middleware/auth');
 const router = express.Router();
 
-router.post('/vente/create',authenticateToken, ajouterVente);
-router.post('/vente/transaction',authenticateToken, ajouterTransaction);
-router.get('/vente/listall',authenticateToken, listallVente);
-router.post('/vente/detailById',authenticateToken, detailVente);
-router.post('/vente/delete',authenticateToken, deleteVente);
-router.post('/vente/update',authenticateToken, updateVente);
-router.get('/vente/user',authenticateToken, listUserVente);
-router.get('/vente/day',authenticateToken, getventedayCount);
-router.get('/vente/montantday',authenticateToken, getventemontantdayCount);
-router.post('/vente/ventesearch',authenticateToken, listVentesearch);
-router.post('/vente/ventesearch/som',authenticateToken, listVenteProduitsearchSom);
-router.get('/vente/daily',authenticateToken, getDailySales);
-router.get('/vente/weekly',authenticateToken, getWeeklySales);
-router.get('/vente/monthly',authenticateToken, getMonthlySales);
+// Routes principales (nouvelles)
+router.post('/vente/create', authenticateToken, ajouterVente);
+router.get('/vente/listall', authenticateToken, listallVentes);
+router.post('/vente/detailById', authenticateToken, detailVente);
+router.post('/vente/update', authenticateToken, updateVente);
+router.post('/vente/delete', authenticateToken, deleteVente);
+router.get('/vente/stats', authenticateToken, statsVentes);
+
+// Routes publiques pour création de commandes depuis le frontend
+router.post('/vente/commande/create', ajouterVente);
+
+// Aliases pour compatibilité avec l'ancien système
+router.post('/vente/ajouter', authenticateToken, ajouter);
+router.get('/vente/listall', authenticateToken, listall);
+router.post('/vente/detail', authenticateToken, detail);
+router.post('/vente/modifier', authenticateToken, update);
+router.post('/vente/supprimer', authenticateToken, supprimer);
 module.exports = router;

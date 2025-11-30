@@ -1,27 +1,54 @@
-require('dotenv').config();
+﻿require('dotenv').config({ path: './config.env' });
 const mysql = require('mysql');
 
-let pool = null; // Stocke l'instance unique du pool
+console.log('🔧 Initialisation connexion MySQL FathNell...');
 
+// Configuration de base
+const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'fatnelle',
+    port: process.env.DB_PORT || 3306,
+    charset: 'utf8mb4'
+};
+
+console.log('📋 Configuration MySQL:', dbConfig);
+
+// Fonction connecter qui crée une nouvelle connexion à chaque fois
 function connecter(callback) {
-    if (!pool) {
-        pool = mysql.createPool({
-            connectionLimit: 10,  // Nombre max de connexions simultanées
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
-            connectTimeout: 10000,  // Temps max avant échec de connexion
-            waitForConnections: true,  // Attendre une connexion si le pool est plein
-            queueLimit: 0  // Pas de limite sur la file d'attente
-        });
-
-        console.log("✅ Pool de connexions MySQL créé.");
-    } else {
-        console.log("🔄 Pool de connexions MySQL réutilisé.");
-    }
-
-    return callback(null, pool);
+    console.log('🔄 Création d\'une nouvelle connexion MySQL...');
+    
+    const connection = mysql.createConnection(dbConfig);
+    
+    connection.connect((err) => {
+        if (err) {
+            console.error('❌ Erreur connexion MySQL:', err.message);
+            return callback(err, null);
+        }
+        
+        console.log('✅ Connexion MySQL réussie');
+        return callback(null, connection);
+    });
+    
+    // Gestion des erreurs de connexion
+    connection.on('error', (err) => {
+        console.error('❌ Erreur connexion:', err.message);
+        if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+            console.log('🔄 Connexion perdue');
+        }
+    });
 }
+
+// Test initial
+connecter((error, connection) => {
+    if (error) {
+        console.error('❌ Test initial échoué:', error.message);
+        console.log('💡 Vérifiez que MySQL est démarré et que la base existe');
+    } else {
+        console.log('✅ Test initial réussi');
+        connection.end();
+    }
+});
 
 module.exports = { connecter };

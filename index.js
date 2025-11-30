@@ -1,788 +1,191 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
 const { connecter } = require('./bd/connect');
 const path = require("path");
-const verifierNotifications = require("./cron/notification");
-const verifierNotificationsstock = require("./cron/notificationstock");
-const cleanupResetPassword = require('./cron/cleanupResetPassword');
 
 const app = express();
 
 // Middleware
 app.use(cors({ origin: "*" }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// === PROXY ROUTE POUR TRANSACTIONS ===
-const authenticateToken = require('./middleware/auth');
+console.log('🔄 Démarrage du serveur FathNell...');
 
-
-app.get('/api/proxy/transactions', authenticateToken, async (req, res) => {
-  const { emp_code = '', start_time, end_time, page = 1 } = req.query;
-  const userId = req.user && req.user.id;
-  console.log('userId reçu:', userId); // Log userId
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
+// Test de connexion à la base de données
+connecter((error, connection) => {
     if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      console.log('Résultat SQL pour userId:', userId, results); // Log résultat SQL
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        console.log('Aucun token trouvé pour userId:', userId); // Log si pas de token
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      console.log('Token alloué récupéré:', userToken); // Log token alloué
-      try {
-        const response = await axios.get('http://54.37.15.111:80/iclock/api/transactions/', {
-          params: { emp_code, start_time, end_time, page },
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log('Réponse API externe:', response.data); // Log réponse API externe
-        res.json(response.data);
-      } catch (err) {
-        console.error('Erreur API externe:', err.response?.data || err.message); // Log erreur API externe
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-// === FIN PROXY ===
-
-// Proxy pour récupérer la liste des employés avec le token alloué
-app.get('/api/proxy/employees', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const page = req.query.page || 1; // Récupération du paramètre de page depuis la requête
-  console.log('userId reçu:', userId, 'page demandée:', page);
-
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      console.log('Résultat SQL pour userId:', userId, results);
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        console.log('Aucun token trouvé pour userId:', userId);
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      console.log('Token alloué récupéré:', userToken);
-      try {
-        // Construction de l'URL avec le paramètre de page
-        const apiUrl = `http://54.37.15.111:80/personnel/api/employees/?page=${page}`;
-        console.log('URL API avec pagination:', apiUrl);
-        
-        const response = await axios.get(apiUrl, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log('Réponse API externe:', response.data);
-        res.json(response.data);
-      } catch (err) {
-        console.error('Erreur API externe:', err.response?.data || err.message);
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// Voir un employé
-app.get('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get(`http://54.37.15.111:80/personnel/api/employees/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// Créer un employé
-app.post('/api/proxy/employees', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.post('http://54.37.15.111:80/personnel/api/employees/', req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// Modifier un employé
-app.patch('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/employees/${id}/`, req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// Supprimer un employé
-app.delete('/api/proxy/employees/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/employees/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// === PROXY DEPARTMENTS ===
-app.get('/api/proxy/departments', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get('http://54.37.15.111:80/personnel/api/departments/', {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.get('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get(`http://54.37.15.111:80/personnel/api/departments/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.post('/api/proxy/departments', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.post('http://54.37.15.111:80/personnel/api/departments/', req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.patch('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/departments/${id}/`, req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.delete('/api/proxy/departments/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/departments/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// === PROXY AREAS ===
-app.get('/api/proxy/areas', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get('http://54.37.15.111:80/personnel/api/areas/', {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.get('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get(`http://54.37.15.111:80/personnel/api/areas/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.post('/api/proxy/areas', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.post('http://54.37.15.111:80/personnel/api/areas/', req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.patch('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/areas/${id}/`, req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.delete('/api/proxy/areas/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/areas/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// === PROXY POSITIONS ===
-app.get('/api/proxy/positions', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get('http://54.37.15.111:80/personnel/api/positions/', {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.get('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.get(`http://54.37.15.111:80/personnel/api/positions/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.post('/api/proxy/positions', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.post('http://54.37.15.111:80/personnel/api/positions/', req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.patch('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.patch(`http://54.37.15.111:80/personnel/api/positions/${id}/`, req.body, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-app.delete('/api/proxy/positions/:id', authenticateToken, async (req, res) => {
-  const userId = req.user && req.user.id;
-  const { id } = req.params;
-  if (!userId) {
-    return res.status(401).json({ error: 'Utilisateur non authentifié' });
-  }
-  connecter((error, connection) => {
-    if (error) {
-      return res.status(500).json({ error: 'Erreur de connexion à la base de données' });
-    }
-    connection.query('SELECT token_allouer FROM users WHERE id = ?', [userId], async (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la récupération du token utilisateur' });
-      }
-      if (!results || results.length === 0 || !results[0].token_allouer) {
-        return res.status(403).json({ error: 'Token utilisateur non trouvé' });
-      }
-      const userToken = results[0].token_allouer;
-      try {
-        const response = await axios.delete(`http://54.37.15.111:80/personnel/api/positions/${id}/`, {
-          headers: {
-            'Authorization': `Token ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        res.json(response.data);
-      } catch (err) {
-        res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
-      }
-    });
-  });
-});
-
-// Connexion à la base de données une seule fois
-connecter((erreur, pool) => {
-    if (erreur) {
-        console.error("❌ Erreur de connexion MySQL :", erreur);
-        process.exit(-1);
+        console.error('❌ ERREUR BDD:', error.message);
     } else {
-        console.log("✅ Connexion MySQL établie.");
-        const PORT = process.env.PORT || 5050;
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`🚀 Serveur démarré sur le port ${PORT}.`);
-        });
+        console.log('✅ Base de données connectée');
+        connection.end();
     }
 });
 
-// Routes API
-const routes = [
-    require("./route/utilisateur"),
-    require("./route/client"),
-    require("./route/categorie"),
-    require("./route/unit"),
-    require("./route/detailcommande"),
-    require("./route/facture"),
-    require("./route/facturation"),
-    require("./route/fournisseur"),
-    require("./route/produit"),
-    require("./route/stock"),
-    require("./route/vente"),
-    require("./route/mail"),
-    require("./route/login"),
-    require("./route/deconnexion"),
-    require("./route/pdfRoutes"),
-    require("./route/invoice"),
-    require("./route/supplement"),
-    require("./route/notification"),
-    require("./route/resetPassword"),
-    require("./route/planning"),
-    require("./route/permissionconge"),
-    require("./route/retardabsence"),
-    require("./route/ponctualite"),
-    require("./route/presenceReport"),
-    require("./route/dashboard"),
+// Routes essentielles avec gestion d'erreurs
+const essentialRoutes = [
+    // Routes d'authentification
+    { name: 'auth', path: './route/auth' },
+    
+    // Routes e-commerce nouvelles (créées)
+    { name: 'couleur', path: './route/couleur' },
+    { name: 'taille', path: './route/taille' },
+    { name: 'collection', path: './route/collection' },
+    { name: 'panier', path: './route/panier' },
+    { name: 'commande', path: './route/commande' },
+    { name: 'wishlist', path: './route/wishlist' },
+    
+    // Routes de contact et newsletter
+    { name: 'contact', path: './route/contact' },
+    
+    // Routes existantes mises à jour
+    { name: 'produit', path: './route/produit' },
+    { name: 'categorie', path: './route/categorie' },
+    { name: 'vente', path: './route/vente' }
 ];
-setInterval(cleanupResetPassword, 60 * 1000); // toutes les minutes
-verifierNotifications();
-verifierNotificationsstock();
 
-routes.forEach(route => app.use("/api/v1", route));
+// Charger les routes avec gestion d'erreurs
+essentialRoutes.forEach(route => {
+    try {
+        console.log(`🔄 Chargement de la route: ${route.name} depuis ${route.path}`);
+        const routeModule = require(route.path);
+        
+        // Pour les routes spéciales, utiliser des préfixes spécifiques
+        if (route.name === 'auth') {
+            app.use("/api/v1/auth", routeModule);
+            console.log(`✅ Route ${route.name} chargée depuis ${route.path} sur /api/v1/auth`);
+        } else if (route.name === 'contact') {
+            app.use("/api/v1/contact", routeModule);
+            console.log(`✅ Route ${route.name} chargée depuis ${route.path} sur /api/v1/contact`);
+            console.log(`   📍 Routes disponibles: POST /api/v1/contact/newsletter/subscribe, POST /api/v1/contact/send`);
+        } else {
+            app.use("/api/v1", routeModule);
+            console.log(`✅ Route ${route.name} chargée depuis ${route.path}`);
+        }
+        
+        // Vérifier que le module exporte bien un router
+        if (typeof routeModule === 'function') {
+            console.log(`   └─ Type: Router Express`);
+        } else {
+            console.warn(`   ⚠️  Type inattendu: ${typeof routeModule}`);
+        }
+    } catch (error) {
+        console.error(`❌ Erreur route ${route.name}:`, error.message);
+        console.error(`   Chemin: ${route.path}`);
+        console.error(`   Stack:`, error.stack);
+    }
+});
 
-// Servir les fichiers PDF
-app.use("/factures", express.static(path.join(__dirname, "factures")));
-app.use("/pdf", express.static(path.join(__dirname, "pdf")));
-app.use("/invoices", express.static(path.join(__dirname, "invoices")));
+// Routes optionnelles (avec gestion d'erreurs silencieuse)
+const optionalRoutes = [
+    { name: 'login', path: './route/login' },
+    { name: 'utilisateur', path: './route/utilisateur' },
+    { name: 'client', path: './route/client' }
+];
+
+optionalRoutes.forEach(route => {
+    try {
+        const routeModule = require(route.path);
+        app.use("/api/v1", routeModule);
+        console.log(`✅ Route optionnelle ${route.name} chargée`);
+    } catch (error) {
+        console.warn(`⚠️  Route optionnelle ${route.name} ignorée:`, error.message);
+    }
+});
+
+// Servir les fichiers statiques
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+app.use("/public", express.static(path.join(__dirname, "public")));
+
+// Route de santé
+app.get('/api/v1/health', (req, res) => {
+    res.json({ 
+        status: 'OK',
+        message: 'FathNell API fonctionne',
+        timestamp: new Date().toISOString(),
+        routes_available: [
+            'GET  /api/v1/health',
+            'GET  /api/v1/couleur/listall',
+            'GET  /api/v1/taille/listall',
+            'GET  /api/v1/collection/listall',
+            'GET  /api/v1/produit/listall',
+            'GET  /api/v1/categorie/listall',
+            'POST /api/v1/panier/get',
+            'POST /api/v1/commande/creer',
+        ]
+    });
+});
+
+// Route de test pour vérifier que les routes sont bien chargées
+app.get('/api/v1/test-routes', (req, res) => {
+    res.json({ 
+        message: 'Routes test',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Gestion des erreurs 404 (doit être en dernier)
+app.use('*', (req, res) => {
+    // Ignorer les requêtes pour les fichiers statiques
+    if (req.originalUrl.startsWith('/uploads/') || req.originalUrl.startsWith('/public/')) {
+        return res.status(404).json({ error: 'Fichier non trouvé' });
+    }
+    
+    console.log(`⚠️  Route non trouvée: ${req.method} ${req.originalUrl}`);
+    console.log(`   📍 Routes disponibles:`);
+    console.log(`      - POST /api/v1/contact/newsletter/subscribe`);
+    console.log(`      - POST /api/v1/contact/send`);
+    console.log(`      - POST /api/v1/auth/register`);
+    console.log(`      - POST /api/v1/auth/login`);
+    
+    res.status(404).json({ 
+        error: 'Route non trouvée',
+        path: req.originalUrl,
+        method: req.method,
+        available_routes: [
+            'POST /api/v1/contact/newsletter/subscribe',
+            'POST /api/v1/contact/send',
+            'POST /api/v1/auth/register',
+            'POST /api/v1/auth/login',
+            'GET /api/v1/health'
+        ]
+    });
+});
+
+// Gestion des erreurs globales
+app.use((error, req, res, next) => {
+    console.error('❌ Erreur serveur:', error.message);
+    res.status(500).json({ 
+        error: 'Erreur serveur',
+        message: error.message
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, (error) => {
+    if (error) {
+        console.error('❌ Erreur démarrage serveur:', error);
+        process.exit(1);
+    }
+    
+    console.log(`🚀 Serveur FathNell démarré sur http://localhost:${PORT}`);
+    console.log(`🧪 Test: curl http://localhost:${PORT}/api/v1/health`);
+    console.log(`📋 API Documentation:`);
+    console.log(`   - Santé: GET /api/v1/health`);
+    console.log(`   - Auth - Inscription: POST /api/v1/auth/register`);
+    console.log(`   - Auth - Connexion: POST /api/v1/auth/login`);
+    console.log(`   - Couleurs: GET /api/v1/couleur/listall`);
+    console.log(`   - Tailles: GET /api/v1/taille/listall`);
+    console.log(`   - Collections: GET /api/v1/collection/listall`);
+    console.log(`   - Produits: GET /api/v1/produit/listall`);
+    console.log(`📁 Uploads: http://localhost:${PORT}/uploads/`);
+});
+
+// Gestion propre de l'arrêt
+process.on('SIGINT', () => {
+    console.log('\n🔄 Arrêt du serveur...');
+    process.exit(0);
+});
 
 module.exports = app;
