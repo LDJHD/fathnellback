@@ -34,6 +34,7 @@ const essentialRoutes = [
     { name: 'panier', path: './route/panier' },
     { name: 'commande', path: './route/commande' },
     { name: 'wishlist', path: './route/wishlist' },
+    { name: 'banniere', path: './route/banniere' },
     
     // Routes de contact et newsletter
     { name: 'contact', path: './route/contact' },

@@ -4,6 +4,7 @@ class Categorie {
         this.nom = data.nom;
         this.description = data.description;
         this.parent_id = data.parent_id;
+        this.banniere_url = data.banniere_url;
         this.created_at = data.created_at;
         this.updated_at = data.updated_at;
         

@@ -45,6 +45,7 @@ const ajouterProduit = async (req, res) => {
             prix,
             prix_promo,
             en_promo = false,
+            vedette = false,
             personnalisable = false,
             stock_status = 'disponible',
             code_barre,
@@ -56,6 +57,7 @@ const ajouterProduit = async (req, res) => {
 
         // Conversion des booléens (FormData envoie des strings)
         const enPromoBoolean = en_promo === 'true' || en_promo === true;
+        const vedetteBoolean = vedette === 'true' || vedette === true;
         const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
 
         if (!nom || !prix || !categorie_id) {
@@ -80,13 +82,13 @@ const ajouterProduit = async (req, res) => {
                 // Insérer le produit
                 const insertProduitQuery = `
                     INSERT INTO produits 
-                    (nom, description, prix, prix_promo, en_promo, personnalisable, stock_status, code_barre, collection_id, categorie_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (nom, description, prix, prix_promo, en_promo, vedette, personnalisable, stock_status, code_barre, collection_id, categorie_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
 
                 connection.query(
                     insertProduitQuery,
-                    [nom, description, prix, prix_promo, enPromoBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id],
+                    [nom, description, prix, prix_promo, enPromoBoolean, vedetteBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id],
                     (err, result) => {
                         if (err) {
                             return connection.rollback(() => {
@@ -606,6 +608,7 @@ const updateProduit = async (req, res) => {
             prix,
             prix_promo,
             en_promo = false,
+            vedette = false,
             personnalisable = false,
             stock_status = 'disponible',
             code_barre,
@@ -617,6 +620,7 @@ const updateProduit = async (req, res) => {
 
         // Conversion des booléens (FormData envoie des strings)
         const enPromoBoolean = en_promo === 'true' || en_promo === true;
+        const vedetteBoolean = vedette === 'true' || vedette === true;
         const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
 
         if (!id) {
@@ -647,14 +651,14 @@ const updateProduit = async (req, res) => {
                 // Mettre à jour le produit
                 const updateProduitQuery = `
                     UPDATE produits 
-                    SET nom = ?, description = ?, prix = ?, prix_promo = ?, en_promo = ?, 
+                    SET nom = ?, description = ?, prix = ?, prix_promo = ?, en_promo = ?, vedette = ?, 
                         personnalisable = ?, stock_status = ?, code_barre = ?, collection_id = ?, categorie_id = ?, updated_at = NOW()
                     WHERE id = ?
                 `;
 
                 connection.query(
                     updateProduitQuery,
-                    [nom, description, prix, prix_promo, enPromoBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id, id],
+                    [nom, description, prix, prix_promo, enPromoBoolean, vedetteBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id, id],
                     (err, result) => {
                         if (err) {
                             return connection.rollback(() => {
@@ -831,6 +835,49 @@ const updateProduit = async (req, res) => {
     });
 };
 
+// Lister les produits vedettes pour la page d'accueil
+const listProduitsVedettes = async (req, res) => {
+    const { limit = 8 } = req.query;
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        const query = `
+            SELECT 
+                p.*,
+                c.nom as collection_nom,
+                cat.nom as categorie_nom,
+                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
+                (SELECT COUNT(*) FROM produit_images WHERE produit_id = p.id) as nombre_images
+            FROM produits p
+            LEFT JOIN collections c ON p.collection_id = c.id
+            LEFT JOIN categories cat ON p.categorie_id = cat.id
+            WHERE p.vedette = TRUE
+            ORDER BY p.created_at DESC
+            LIMIT ?
+        `;
+
+        connection.query(query, [parseInt(limit)], (err, results) => {
+            connection.end();
+            
+            if (err) {
+                console.error("Erreur lors de la récupération des produits vedettes:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la récupération des produits vedettes",
+                    error: err.message 
+                });
+            }
+
+            res.status(200).json({
+                message: "Produits vedettes récupérés avec succès",
+                produits: results
+            });
+        });
+    });
+};
+
 module.exports = {
     ajouterProduit,
     listallProduit,
@@ -839,5 +886,6 @@ module.exports = {
     filtreBycodebarreorid,
     deleteProduit,
     updateProduit,
-    listallProduitpagine
+    listallProduitpagine,
+    listProduitsVedettes
 };

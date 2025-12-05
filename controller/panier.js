@@ -26,6 +26,7 @@ const getPanier = async (req, res) => {
                 c.code_hex as couleur_code,
                 t.nom as taille_nom,
                 t.type as taille_type,
+                pi.texte_personnalisation,
                 (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
             FROM paniers pa
             JOIN panier_items pi ON pa.id = pi.panier_id
@@ -74,7 +75,8 @@ const ajouterAuPanier = async (req, res) => {
         quantite = 1, 
         personnalise = false, 
         couleur_id = null, 
-        taille_id = null 
+        taille_id = null,
+        texte_personnalisation = null 
     } = req.body;
 
     if (!session_id || !produit_id) {
@@ -143,13 +145,13 @@ const ajouterAuPanier = async (req, res) => {
                     // Ajouter un nouvel item
                     const insertQuery = `
                         INSERT INTO panier_items 
-                        (panier_id, produit_id, quantite, personnalise, couleur_id, taille_id, prix_unitaire) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (panier_id, produit_id, quantite, personnalise, couleur_id, taille_id, texte_personnalisation, prix_unitaire) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     `;
 
                     connection.query(
                         insertQuery, 
-                        [panier_id, produit_id, quantite, personnalise, couleur_id, taille_id, prix_unitaire], 
+                        [panier_id, produit_id, quantite, personnalise, couleur_id, taille_id, texte_personnalisation, prix_unitaire], 
                         (err, insertResult) => {
                             if (err) {
                                 console.error("Erreur lors de l'ajout:", err);

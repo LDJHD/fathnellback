@@ -37,7 +37,8 @@ const creerCommande = async (req, res) => {
                     p.prix as produit_prix_original,
                     c.nom as couleur_nom,
                     t.nom as taille_nom,
-                    t.type as taille_type
+                    t.type as taille_type,
+                    pi.texte_personnalisation
                 FROM paniers pa
                 JOIN panier_items pi ON pa.id = pi.panier_id
                 JOIN produits p ON pi.produit_id = p.id
@@ -89,8 +90,8 @@ const creerCommande = async (req, res) => {
                         return new Promise((resolve, reject) => {
                             const insertDetailQuery = `
                                 INSERT INTO commande_details 
-                                (commande_id, produit_id, quantite, prix_unitaire, personnalise, couleur_id, taille_id) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                                (commande_id, produit_id, quantite, prix_unitaire, personnalise, couleur_id, taille_id, texte_personnalisation) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             `;
 
                             connection.query(
@@ -102,7 +103,8 @@ const creerCommande = async (req, res) => {
                                     item.prix_unitaire,
                                     item.personnalise,
                                     item.couleur_id,
-                                    item.taille_id
+                                    item.taille_id,
+                                    item.texte_personnalisation
                                 ],
                                 (err, result) => {
                                     if (err) reject(err);
@@ -149,7 +151,8 @@ const creerCommande = async (req, res) => {
                                         personnalise: item.personnalise ? true : false,
                                         couleur: item.couleur_nom || null,
                                         taille: item.taille_nom || null,
-                                        taille_type: item.taille_type || null
+                                        taille_type: item.taille_type || null,
+                                        texte_personnalisation: item.texte_personnalisation || null
                                     }));
 
                                     console.log("📦 Articles préparés pour la réponse:", articlesDetails);
@@ -267,6 +270,7 @@ const detailCommande = async (req, res) => {
                 cd.quantite,
                 cd.prix_unitaire,
                 cd.personnalise,
+                cd.texte_personnalisation,
                 p.nom as produit_nom,
                 p.description as produit_description,
                 co.nom as couleur_nom,
@@ -309,6 +313,7 @@ const detailCommande = async (req, res) => {
                     quantite: row.quantite,
                     prix_unitaire: row.prix_unitaire,
                     personnalise: row.personnalise,
+                    texte_personnalisation: row.texte_personnalisation,
                     produit: {
                         nom: row.produit_nom,
                         description: row.produit_description

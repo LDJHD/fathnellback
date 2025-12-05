@@ -1,4 +1,33 @@
 ﻿const { connecter } = require("../bd/connect");
+const multer = require('multer');
+const path = require('path');
+
+// Configuration multer pour les bannières de catégories
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads/categories/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'banniere-cat-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadBanniere = multer({
+    storage: storage,
+    fileFilter: function (req, file, cb) {
+        const filetypes = /jpeg|jpg|png|gif|webp/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Erreur: Seuls les fichiers image sont autorisés'));
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB max
+    }
+}).single('banniere');
 
 // Lister toutes les catégories
 const listallCategories = async (req, res) => {
@@ -38,36 +67,77 @@ const listallCategories = async (req, res) => {
 
 // Ajouter une catégorie
 const ajouterCategorie = async (req, res) => {
-    const { nom, description, parent_id } = req.body;
-
-    if (!nom) {
-        return res.status(400).json({ message: "Le nom est requis" });
-    }
-
-    connecter((error, connection) => {
-        if (error) {
-            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+    uploadBanniere(req, res, function (err) {
+        if (err && err.code !== 'LIMIT_UNEXPECTED_FILE') {
+            console.error('Erreur upload:', err);
+            return res.status(400).json({ 
+                success: false, 
+                message: err.message 
+            });
         }
 
-        const query = `INSERT INTO categories (nom, description, parent_id) VALUES (?, ?, ?)`;
+        const { nom, description, parent_id } = req.body;
 
-        connection.query(query, [nom, description, parent_id], (err, result) => {
-            if (err) {
-                console.error("Erreur lors de l'ajout:", err);
-                return res.status(500).json({ 
-                    message: "Erreur lors de l'ajout de la catégorie",
-                    error: err.message 
-                });
+        if (!nom) {
+            return res.status(400).json({ message: "Le nom est requis" });
+        }
+
+        const banniere_url = req.file ? `/uploads/categories/${req.file.filename}` : null;
+
+        connecter((error, connection) => {
+            if (error) {
+                return res.status(500).json({ message: "Erreur de connexion à la base de données" });
             }
 
-            res.status(201).json({
-                message: "Catégorie ajoutée avec succès",
-                categorie: {
-                    id: result.insertId,
-                    nom,
-                    description,
-                    parent_id
+            // Vérifier si la colonne banniere_url existe
+            const checkColumnQuery = `SHOW COLUMNS FROM categories LIKE 'banniere_url'`;
+            
+            connection.query(checkColumnQuery, (checkErr, checkResults) => {
+                if (checkErr) {
+                    console.error("Erreur lors de la vérification de colonne:", checkErr);
+                    connection.end();
+                    return res.status(500).json({ 
+                        message: "Erreur lors de la vérification de la structure de table" 
+                    });
                 }
+
+                let query, values;
+                
+                if (checkResults.length > 0) {
+                    // La colonne banniere_url existe
+                    query = `INSERT INTO categories (nom, description, parent_id, banniere_url) VALUES (?, ?, ?, ?)`;
+                    values = [nom, description, parent_id, banniere_url];
+                } else {
+                    // La colonne banniere_url n'existe pas encore
+                    console.warn("ATTENTION: La colonne banniere_url n'existe pas. Exécutez le script SQL d'update.");
+                    query = `INSERT INTO categories (nom, description, parent_id) VALUES (?, ?, ?)`;
+                    values = [nom, description, parent_id];
+                }
+
+                connection.query(query, values, (err, result) => {
+                    connection.end();
+                    
+                    if (err) {
+                        console.error("Erreur lors de l'ajout:", err);
+                        return res.status(500).json({ 
+                            message: "Erreur lors de l'ajout de la catégorie",
+                            error: err.message,
+                            sql_update_needed: checkResults.length === 0
+                        });
+                    }
+
+                    res.status(201).json({
+                        message: "Catégorie ajoutée avec succès",
+                        categorie: {
+                            id: result.insertId,
+                            nom,
+                            description,
+                            parent_id,
+                            banniere_url: checkResults.length > 0 ? banniere_url : null
+                        },
+                        sql_update_needed: checkResults.length === 0
+                    });
+                });
             });
         });
     });
@@ -137,37 +207,63 @@ const detailCategorie = async (req, res) => {
 
 // Modifier une catégorie
 const updateCategorie = async (req, res) => {
-    const { id, nom, description, parent_id } = req.body;
-
-    if (!id || !nom) {
-        return res.status(400).json({ message: "L'ID et le nom sont requis" });
-    }
-
-    connecter((error, connection) => {
-        if (error) {
-            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+    uploadBanniere(req, res, function (err) {
+        if (err && err.code !== 'LIMIT_UNEXPECTED_FILE') {
+            console.error('Erreur upload:', err);
+            return res.status(400).json({ 
+                success: false, 
+                message: err.message 
+            });
         }
 
-        const query = `
-            UPDATE categories 
-            SET nom = ?, description = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        `;
+        const { id, nom, description, parent_id } = req.body;
 
-        connection.query(query, [nom, description, parent_id, id], (err, result) => {
-            if (err) {
-                console.error("Erreur lors de la modification:", err);
-                return res.status(500).json({ 
-                    message: "Erreur lors de la modification de la catégorie" 
+        if (!id || !nom) {
+            return res.status(400).json({ message: "L'ID et le nom sont requis" });
+        }
+
+        connecter((error, connection) => {
+            if (error) {
+                return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+            }
+
+            // Si une nouvelle bannière est uploadée, l'inclure dans la mise à jour
+            let query, values;
+            if (req.file) {
+                const banniere_url = `/uploads/categories/${req.file.filename}`;
+                query = `
+                    UPDATE categories 
+                    SET nom = ?, description = ?, parent_id = ?, banniere_url = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `;
+                values = [nom, description, parent_id, banniere_url, id];
+            } else {
+                query = `
+                    UPDATE categories 
+                    SET nom = ?, description = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `;
+                values = [nom, description, parent_id, id];
+            }
+
+            connection.query(query, values, (err, result) => {
+                connection.end();
+                
+                if (err) {
+                    console.error("Erreur lors de la modification:", err);
+                    return res.status(500).json({ 
+                        message: "Erreur lors de la modification de la catégorie" 
+                    });
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ message: "Catégorie non trouvée" });
+                }
+
+                res.status(200).json({
+                    message: "Catégorie modifiée avec succès",
+                    banniere_url: req.file ? `/uploads/categories/${req.file.filename}` : undefined
                 });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ message: "Catégorie non trouvée" });
-            }
-
-            res.status(200).json({
-                message: "Catégorie modifiée avec succès"
             });
         });
     });

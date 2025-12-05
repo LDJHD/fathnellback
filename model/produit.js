@@ -6,6 +6,7 @@ class Produit {
         this.prix = data.prix;
         this.prix_promo = data.prix_promo;
         this.en_promo = data.en_promo;
+        this.vedette = data.vedette;
         this.personnalisable = data.personnalisable;
         this.stock_status = data.stock_status;
         this.code_barre = data.code_barre;
