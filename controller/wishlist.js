@@ -23,7 +23,7 @@ const getWishlist = async (req, res) => {
                 p.prix_promo,
                 p.en_promo,
                 p.stock_status,
-                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
+                (SELECT media_url FROM  produit_medias WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
             FROM wishlist w
             JOIN wishlist_items wi ON w.id = wi.wishlist_id
             JOIN produits p ON wi.produit_id = p.id

@@ -2,6 +2,8 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { uploadImagesToR2 } = require("../retourne");
+
 
 // Configuration multer pour les images de produits
 const storage = multer.diskStorage({
@@ -15,26 +17,208 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, 'produit-' + uniqueSuffix + path.extname(file.originalname));
+        // uploadImagesToR2([file])
     }
 });
 
 const upload = multer({ 
     storage: storage,
     fileFilter: function (req, file, cb) {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-            return cb(new Error('Seules les images sont autorisées!'), false);
+        // Accepter images et vidéos
+        const allowedMimes = /\.(jpg|jpeg|png|gif|mp4|webm|mov|avi)$/i;
+        if (!file.originalname.match(allowedMimes)) {
+            return cb(new Error('Seules les images (jpg, jpeg, png, gif) et vidéos (mp4, webm, mov, avi) sont autorisées!'), false);
         }
         cb(null, true);
     },
-    limits: { fileSize: 5 * 1024 * 1024 }
-}).array('images', 10); // Jusqu'à 10 images
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB pour supporter les vidéos
+}).array('medias', 15); // Jusqu'à 15 médias (images + vidéos)
+
+// // Ajouter un produit
+// const ajouterProduit = async (req, res) => {
+//     upload(req, res, function(err) {
+//         if (err) {
+//             return res.status(400).json({ 
+//                 message: "Erreur lors de l'upload des images",
+//                 error: err.message 
+//             });
+//         }
+
+//         const {
+//             nom,
+//             description,
+//             prix,
+//             prix_promo,
+//             en_promo = false,
+//             vedette = false,
+//             personnalisable = false,
+//             stock_status = 'disponible',
+//             code_barre,
+//             collection_id,
+//             categorie_id,
+//             couleurs = [],
+//             tailles = []
+//         } = req.body;
+
+//         // Conversion des booléens (FormData envoie des strings)
+//         const enPromoBoolean = en_promo === 'true' || en_promo === true;
+//         const vedetteBoolean = vedette === 'true' || vedette === true;
+//         const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
+
+//         if (!nom || !prix || !categorie_id) {
+//             return res.status(400).json({ 
+//                 message: "Le nom, le prix et la catégorie sont requis" 
+//             });
+//         }
+
+//         connecter((error, connection) => {
+//             if (error) {
+//                 return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+//             }
+
+//             // Commencer une transaction
+//             connection.beginTransaction((err) => {
+//                 if (err) {
+//                     return res.status(500).json({ 
+//                         message: "Erreur lors du démarrage de la transaction" 
+//                     });
+//                 }
+
+//                 // Insérer le produit
+//                 const insertProduitQuery = `
+//                     INSERT INTO produits 
+//                     (nom, description, prix, prix_promo, en_promo, vedette, personnalisable, stock_status, code_barre, collection_id, categorie_id) 
+//                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//                 `;
+
+//                 connection.query(
+//                     insertProduitQuery,
+//                     [nom, description, prix, prix_promo, enPromoBoolean, vedetteBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id],
+//                     (err, result) => {
+//                         if (err) {
+//                             return connection.rollback(() => {
+//                                 console.error("Erreur SQL:", err);
+//                                 res.status(500).json({ 
+//                                     message: "Erreur lors de la création du produit",
+//                                     error: err.message 
+//                                 });
+//                             });
+//                         }
+
+//                         const produit_id = result.insertId;
+//                         const promises = [];
+
+//                         // Ajouter les médias (images et vidéos)
+//                         if (req.files && req.files.length > 0) {
+//                             req.files.forEach((file, index) => {
+//                                 // Déterminer le type de média
+//                                 const isVideo = /\.(mp4|webm|mov|avi)$/i.test(file.originalname);
+//                                 const typeMedia = isVideo ? 'video' : 'image';
+                                
+//                                 const insertMediaQuery = `
+//                                     INSERT INTO produit_medias (produit_id, media_url, type_media, is_principal, ordre) 
+//                                     VALUES (?, ?, ?, ?, ?)
+//                                 `;
+                                
+//                                 promises.push(new Promise((resolve, reject) => {
+//                                     connection.query(
+//                                         insertMediaQuery,
+//                                         [produit_id, file.filename, typeMedia, index === 0, index + 1],
+//                                         (err, result) => {
+//                                             if (err) reject(err);
+//                                             else resolve(result);
+//                                         }
+//                                     );
+//                                 }));
+//                             });
+//                         }
+
+//                         // Ajouter les couleurs
+//                         if (couleurs && couleurs.length > 0) {
+//                             const couleursArray = Array.isArray(couleurs) ? couleurs : JSON.parse(couleurs);
+//                             couleursArray.forEach(couleur_id => {
+//                                 const insertCouleurQuery = `
+//                                     INSERT INTO produit_couleurs (produit_id, couleur_id) VALUES (?, ?)
+//                                 `;
+                                
+//                                 promises.push(new Promise((resolve, reject) => {
+//                                     connection.query(
+//                                         insertCouleurQuery,
+//                                         [produit_id, couleur_id],
+//                                         (err, result) => {
+//                                             if (err) reject(err);
+//                                             else resolve(result);
+//                                         }
+//                                     );
+//                                 }));
+//                             });
+//                         }
+
+//                         // Ajouter les tailles
+//                         if (tailles && tailles.length > 0) {
+//                             const taillesArray = Array.isArray(tailles) ? tailles : JSON.parse(tailles);
+//                             taillesArray.forEach(taille_id => {
+//                                 const insertTailleQuery = `
+//                                     INSERT INTO produit_tailles (produit_id, taille_id) VALUES (?, ?)
+//                                 `;
+                                
+//                                 promises.push(new Promise((resolve, reject) => {
+//                                     connection.query(
+//                                         insertTailleQuery,
+//                                         [produit_id, taille_id],
+//                                         (err, result) => {
+//                                             if (err) reject(err);
+//                                             else resolve(result);
+//                                         }
+//                                     );
+//                                 }));
+//                             });
+//                         }
+
+//                         Promise.all(promises)
+//                             .then(() => {
+//                                 connection.commit((err) => {
+//                                     if (err) {
+//                                         return connection.rollback(() => {
+//                                             res.status(500).json({ 
+//                                                 message: "Erreur lors de la validation du produit" 
+//                                             });
+//                                         });
+//                                     }
+
+//                                     res.status(201).json({
+//                                         message: "Produit créé avec succès",
+//                                         produit: {
+//                                             id: produit_id,
+//                                             nom,
+//                                             prix,
+//                                             images: req.files ? req.files.map(f => f.filename) : []
+//                                         }
+//                                     });
+//                                 });
+//                             })
+//                             .catch((err) => {
+//                                 connection.rollback(() => {
+//                                     console.error("Erreur lors de l'ajout des caractéristiques:", err);
+//                                     res.status(500).json({ 
+//                                         message: "Erreur lors de l'ajout des caractéristiques du produit" 
+//                                     });
+//                                 });
+//                             });
+//                     }
+//                 );
+//             });
+//         });
+//     });
+// };
+
 
 // Ajouter un produit
 const ajouterProduit = async (req, res) => {
-    upload(req, res, function(err) {
+    upload(req, res, async function(err) {
         if (err) {
             return res.status(400).json({ 
-                message: "Erreur lors de l'upload des images",
+                message: "Erreur lors de l'upload des médias",
                 error: err.message 
             });
         }
@@ -55,31 +239,39 @@ const ajouterProduit = async (req, res) => {
             tailles = []
         } = req.body;
 
-        // Conversion des booléens (FormData envoie des strings)
-        const enPromoBoolean = en_promo === 'true' || en_promo === true;
-        const vedetteBoolean = vedette === 'true' || vedette === true;
-        const personnalisableBoolean = personnalisable === 'true' || personnalisable === true;
-
         if (!nom || !prix || !categorie_id) {
-            return res.status(400).json({ 
-                message: "Le nom, le prix et la catégorie sont requis" 
+            return res.status(400).json({ message: "Le nom, le prix et la catégorie sont requis" });
+        }
+
+        // Convertir les booléens
+        const enPromoBoolean = (en_promo === "true" || en_promo === true);
+        const vedetteBoolean = (vedette === "true" || vedette === true);
+        const personnalisableBoolean = (personnalisable === "true" || personnalisable === true);
+
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let urlsR2 = [];
+
+        try {
+            urlsR2 = await uploadImagesToR2(req.files, "dev/produits");
+        } catch (error) {
+            console.error("Erreur upload R2:", error);
+            return res.status(500).json({ 
+                message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                error: error.message 
             });
         }
 
+        // Connexion SQL
         connecter((error, connection) => {
             if (error) {
                 return res.status(500).json({ message: "Erreur de connexion à la base de données" });
             }
 
-            // Commencer une transaction
             connection.beginTransaction((err) => {
                 if (err) {
-                    return res.status(500).json({ 
-                        message: "Erreur lors du démarrage de la transaction" 
-                    });
+                    return res.status(500).json({ message: "Erreur lors du démarrage de la transaction" });
                 }
 
-                // Insérer le produit
                 const insertProduitQuery = `
                     INSERT INTO produits 
                     (nom, description, prix, prix_promo, en_promo, vedette, personnalisable, stock_status, code_barre, collection_id, categorie_id) 
@@ -90,110 +282,78 @@ const ajouterProduit = async (req, res) => {
                     insertProduitQuery,
                     [nom, description, prix, prix_promo, enPromoBoolean, vedetteBoolean, personnalisableBoolean, stock_status, code_barre, collection_id, categorie_id],
                     (err, result) => {
+
                         if (err) {
                             return connection.rollback(() => {
                                 console.error("Erreur SQL:", err);
-                                res.status(500).json({ 
-                                    message: "Erreur lors de la création du produit",
-                                    error: err.message 
-                                });
+                                res.status(500).json({ message: "Erreur lors de la création du produit" });
                             });
                         }
 
                         const produit_id = result.insertId;
                         const promises = [];
 
-                        // Ajouter les images
-                        if (req.files && req.files.length > 0) {
-                            req.files.forEach((file, index) => {
-                                const insertImageQuery = `
-                                    INSERT INTO produit_images (produit_id, image_url, is_principal, ordre) 
-                                    VALUES (?, ?, ?, ?)
-                                `;
-                                
-                                promises.push(new Promise((resolve, reject) => {
-                                    connection.query(
-                                        insertImageQuery,
-                                        [produit_id, file.filename, index === 0, index + 1],
-                                        (err, result) => {
-                                            if (err) reject(err);
-                                            else resolve(result);
-                                        }
-                                    );
-                                }));
-                            });
-                        }
+                        // --- 📌 Ajouter les médias (URL R2) ---
+                        urlsR2.forEach((url, index) => {
+                            const typeMedia = /\.(mp4|webm|mov|avi)$/i.test(url) ? "video" : "image";
 
-                        // Ajouter les couleurs
-                        if (couleurs && couleurs.length > 0) {
-                            const couleursArray = Array.isArray(couleurs) ? couleurs : JSON.parse(couleurs);
-                            couleursArray.forEach(couleur_id => {
-                                const insertCouleurQuery = `
-                                    INSERT INTO produit_couleurs (produit_id, couleur_id) VALUES (?, ?)
-                                `;
-                                
-                                promises.push(new Promise((resolve, reject) => {
-                                    connection.query(
-                                        insertCouleurQuery,
-                                        [produit_id, couleur_id],
-                                        (err, result) => {
-                                            if (err) reject(err);
-                                            else resolve(result);
-                                        }
-                                    );
-                                }));
-                            });
-                        }
+                            const insertMediaQuery = `
+                                INSERT INTO produit_medias (produit_id, media_url, type_media, is_principal, ordre)
+                                VALUES (?, ?, ?, ?, ?)
+                            `;
 
-                        // Ajouter les tailles
-                        if (tailles && tailles.length > 0) {
-                            const taillesArray = Array.isArray(tailles) ? tailles : JSON.parse(tailles);
-                            taillesArray.forEach(taille_id => {
-                                const insertTailleQuery = `
-                                    INSERT INTO produit_tailles (produit_id, taille_id) VALUES (?, ?)
-                                `;
-                                
-                                promises.push(new Promise((resolve, reject) => {
-                                    connection.query(
-                                        insertTailleQuery,
-                                        [produit_id, taille_id],
-                                        (err, result) => {
-                                            if (err) reject(err);
-                                            else resolve(result);
-                                        }
-                                    );
-                                }));
-                            });
-                        }
+                            promises.push(new Promise((resolve, reject) => {
+                                connection.query(
+                                    insertMediaQuery,
+                                    [produit_id, url, typeMedia, index === 0, index + 1],
+                                    (err, result) => err ? reject(err) : resolve(result)
+                                );
+                            }));
+                        });
 
+                        // --- Couleurs ---
+                        const couleursArray = Array.isArray(couleurs) ? couleurs : JSON.parse(couleurs || "[]");
+                        couleursArray.forEach(couleur_id => {
+                            promises.push(new Promise((resolve, reject) => {
+                                connection.query(
+                                    "INSERT INTO produit_couleurs (produit_id, couleur_id) VALUES (?, ?)",
+                                    [produit_id, couleur_id],
+                                    (err, result) => err ? reject(err) : resolve(result)
+                                );
+                            }));
+                        });
+
+                        // --- Tailles ---
+                        const taillesArray = Array.isArray(tailles) ? tailles : JSON.parse(tailles || "[]");
+                        taillesArray.forEach(taille_id => {
+                            promises.push(new Promise((resolve, reject) => {
+                                connection.query(
+                                    "INSERT INTO produit_tailles (produit_id, taille_id) VALUES (?, ?)",
+                                    [produit_id, taille_id],
+                                    (err, result) => err ? reject(err) : resolve(result)
+                                );
+                            }));
+                        });
+
+                        // Final commit
                         Promise.all(promises)
                             .then(() => {
-                                connection.commit((err) => {
-                                    if (err) {
-                                        return connection.rollback(() => {
-                                            res.status(500).json({ 
-                                                message: "Erreur lors de la validation du produit" 
-                                            });
-                                        });
-                                    }
-
+                                connection.commit(() => {
                                     res.status(201).json({
                                         message: "Produit créé avec succès",
                                         produit: {
                                             id: produit_id,
                                             nom,
                                             prix,
-                                            images: req.files ? req.files.map(f => f.filename) : []
+                                            medias: urlsR2
                                         }
                                     });
                                 });
                             })
                             .catch((err) => {
                                 connection.rollback(() => {
-                                    console.error("Erreur lors de l'ajout des caractéristiques:", err);
-                                    res.status(500).json({ 
-                                        message: "Erreur lors de l'ajout des caractéristiques du produit" 
-                                    });
+                                    console.error("Erreur caractéristiques:", err);
+                                    res.status(500).json({ message: "Erreur lors de l'ajout des caractéristiques" });
                                 });
                             });
                     }
@@ -202,6 +362,7 @@ const ajouterProduit = async (req, res) => {
         });
     });
 };
+
 
 // Lister tous les produits avec filtres
 const listallProduit = async (req, res) => {
@@ -265,8 +426,8 @@ const listallProduit = async (req, res) => {
                 p.*,
                 c.nom as collection_nom,
                 cat.nom as categorie_nom,
-                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
-                (SELECT COUNT(*) FROM produit_images WHERE produit_id = p.id) as nombre_images
+                (SELECT media_url FROM produit_medias WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
+                (SELECT COUNT(*) FROM produit_medias WHERE produit_id = p.id) as nombre_medias
             FROM produits p
             LEFT JOIN collections c ON p.collection_id = c.id
             LEFT JOIN categories cat ON p.categorie_id = cat.id
@@ -353,14 +514,14 @@ const detailProduit = async (req, res) => {
 
             const produit = produitResults[0];
 
-            // Récupérer les images
-            const imagesQuery = `SELECT * FROM produit_images WHERE produit_id = ? ORDER BY ordre ASC`;
+            // Récupérer les médias (images et vidéos)
+            const mediasQuery = `SELECT * FROM produit_medias WHERE produit_id = ? ORDER BY ordre ASC`;
             
-            connection.query(imagesQuery, [id], (err, imagesResults) => {
+            connection.query(mediasQuery, [id], (err, mediasResults) => {
                 if (err) {
-                    console.error("Erreur lors de la récupération des images:", err);
+                    console.error("Erreur lors de la récupération des médias:", err);
                     return res.status(500).json({ 
-                        message: "Erreur lors de la récupération des images" 
+                        message: "Erreur lors de la récupération des médias" 
                     });
                 }
 
@@ -399,7 +560,9 @@ const detailProduit = async (req, res) => {
                         // Assembler la réponse complète
                         const produitComplet = {
                             ...produit,
-                            images: imagesResults,
+                            images: mediasResults.filter(m => m.type_media === 'image'),
+                            videos: mediasResults.filter(m => m.type_media === 'video'),
+                            medias: mediasResults,
                             couleurs: couleursResults,
                             tailles: taillesResults,
                             collection: produit.collection_nom ? {
@@ -551,7 +714,7 @@ const listallProduitpagine = async (req, res) => {
         const query = `
             SELECT 
                 p.*,
-                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
+                (SELECT media_url FROM produit_medias WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
             FROM produits p
             ORDER BY p.created_at DESC
             LIMIT ? OFFSET ?
@@ -678,40 +841,44 @@ const updateProduit = async (req, res) => {
 
                         const promises = [];
 
-                        // Ajouter nouvelles images si fournies
+                        // Ajouter nouveaux médias si fournis
                         if (req.files && req.files.length > 0) {
-                            // Récupérer le nombre d'images existantes pour l'ordre
-                            const getImageCountQuery = `SELECT COUNT(*) as count FROM produit_images WHERE produit_id = ?`;
+                            // Récupérer le nombre de médias existants pour l'ordre
+                            const getMediaCountQuery = `SELECT COUNT(*) as count FROM produit_medias WHERE produit_id = ?`;
                             
                             promises.push(new Promise((resolve, reject) => {
-                                connection.query(getImageCountQuery, [id], (err, countResult) => {
+                                connection.query(getMediaCountQuery, [id], (err, countResult) => {
                                     if (err) {
                                         reject(err);
                                         return;
                                     }
                                     
                                     const startOrder = countResult[0].count;
-                                    const imagePromises = [];
+                                    const mediaPromises = [];
                                     
                                     req.files.forEach((file, index) => {
-                                        const insertImageQuery = `
-                                            INSERT INTO produit_images (produit_id, image_url, is_principal, ordre) 
-                                            VALUES (?, ?, ?, ?)
+                                        // Déterminer le type de média
+                                        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(file.originalname);
+                                        const typeMedia = isVideo ? 'video' : 'image';
+                                        
+                                        const insertMediaQuery = `
+                                            INSERT INTO produit_medias (produit_id, media_url, type_media, is_principal, ordre) 
+                                            VALUES (?, ?, ?, ?, ?)
                                         `;
                                         
-                                        imagePromises.push(new Promise((resolveImage, rejectImage) => {
+                                        mediaPromises.push(new Promise((resolveMedia, rejectMedia) => {
                                             connection.query(
-                                                insertImageQuery,
-                                                [id, file.filename, startOrder === 0 && index === 0, startOrder + index + 1],
+                                                insertMediaQuery,
+                                                [id, file.filename, typeMedia, startOrder === 0 && index === 0, startOrder + index + 1],
                                                 (err, result) => {
-                                                    if (err) rejectImage(err);
-                                                    else resolveImage(result);
+                                                    if (err) rejectMedia(err);
+                                                    else resolveMedia(result);
                                                 }
                                             );
                                         }));
                                     });
                                     
-                                    Promise.all(imagePromises).then(resolve).catch(reject);
+                                    Promise.all(mediaPromises).then(resolve).catch(reject);
                                 });
                             }));
                         }
@@ -849,8 +1016,8 @@ const listProduitsVedettes = async (req, res) => {
                 p.*,
                 c.nom as collection_nom,
                 cat.nom as categorie_nom,
-                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
-                (SELECT COUNT(*) FROM produit_images WHERE produit_id = p.id) as nombre_images
+                (SELECT media_url FROM produit_medias WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale,
+                (SELECT COUNT(*) FROM produit_medias WHERE produit_id = p.id) as nombre_medias
             FROM produits p
             LEFT JOIN collections c ON p.collection_id = c.id
             LEFT JOIN categories cat ON p.categorie_id = cat.id

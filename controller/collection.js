@@ -2,6 +2,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { uploadImagesToR2 } = require("../retourne");
 
 // Configuration multer pour les images de collection
 const storage = multer.diskStorage({
@@ -31,7 +32,7 @@ const upload = multer({
 
 // Créer une collection
 const ajouterCollection = async (req, res) => {
-    upload(req, res, function(err) {
+    upload(req, res, async function(err) {
         if (err) {
             return res.status(400).json({ 
                 message: "Erreur lors de l'upload de l'image",
@@ -40,10 +41,24 @@ const ajouterCollection = async (req, res) => {
         }
 
         const { nom, description } = req.body;
-        const image = req.file ? req.file.filename : null;
 
         if (!nom) {
             return res.status(400).json({ message: "Le nom est requis" });
+        }
+
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let image = null;
+        if (req.file) {
+            try {
+                const urlsR2 = await uploadImagesToR2([req.file], "dev/collections");
+                image = urlsR2[0];
+            } catch (error) {
+                console.error("Erreur upload R2:", error);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                    error: error.message 
+                });
+            }
         }
 
         connecter((error, connection) => {
@@ -189,7 +204,7 @@ const deleteCollection = async (req, res) => {
 
 // Modifier une collection
 const updateCollection = async (req, res) => {
-    upload(req, res, function(err) {
+    upload(req, res, async function(err) {
         if (err) {
             return res.status(400).json({ 
                 message: "Erreur lors de l'upload de l'image",
@@ -198,10 +213,24 @@ const updateCollection = async (req, res) => {
         }
 
         const { id, nom, description } = req.body;
-        const newImage = req.file ? req.file.filename : null;
 
         if (!id || !nom) {
             return res.status(400).json({ message: "L'ID et le nom sont requis" });
+        }
+
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let newImage = null;
+        if (req.file) {
+            try {
+                const urlsR2 = await uploadImagesToR2([req.file], "dev/collections");
+                newImage = urlsR2[0];
+            } catch (error) {
+                console.error("Erreur upload R2:", error);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                    error: error.message 
+                });
+            }
         }
 
         connecter((error, connection) => {

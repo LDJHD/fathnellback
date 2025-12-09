@@ -1,11 +1,17 @@
 ﻿const { connecter } = require("../bd/connect");
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const { uploadImagesToR2 } = require("../retourne");
 
 // Configuration multer pour les bannières de catégories
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/uploads/categories/');
+        const uploadDir = 'public/uploads/categories';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -67,7 +73,7 @@ const listallCategories = async (req, res) => {
 
 // Ajouter une catégorie
 const ajouterCategorie = async (req, res) => {
-    uploadBanniere(req, res, function (err) {
+    uploadBanniere(req, res, async function (err) {
         if (err && err.code !== 'LIMIT_UNEXPECTED_FILE') {
             console.error('Erreur upload:', err);
             return res.status(400).json({ 
@@ -82,7 +88,20 @@ const ajouterCategorie = async (req, res) => {
             return res.status(400).json({ message: "Le nom est requis" });
         }
 
-        const banniere_url = req.file ? `/uploads/categories/${req.file.filename}` : null;
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let banniere_url = null;
+        if (req.file) {
+            try {
+                const urlsR2 = await uploadImagesToR2([req.file], "dev/categories");
+                banniere_url = urlsR2[0];
+            } catch (error) {
+                console.error("Erreur upload R2:", error);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                    error: error.message 
+                });
+            }
+        }
 
         connecter((error, connection) => {
             if (error) {
@@ -207,7 +226,7 @@ const detailCategorie = async (req, res) => {
 
 // Modifier une catégorie
 const updateCategorie = async (req, res) => {
-    uploadBanniere(req, res, function (err) {
+    uploadBanniere(req, res, async function (err) {
         if (err && err.code !== 'LIMIT_UNEXPECTED_FILE') {
             console.error('Erreur upload:', err);
             return res.status(400).json({ 
@@ -222,6 +241,21 @@ const updateCategorie = async (req, res) => {
             return res.status(400).json({ message: "L'ID et le nom sont requis" });
         }
 
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let banniere_url = null;
+        if (req.file) {
+            try {
+                const urlsR2 = await uploadImagesToR2([req.file], "dev/categories");
+                banniere_url = urlsR2[0];
+            } catch (error) {
+                console.error("Erreur upload R2:", error);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                    error: error.message 
+                });
+            }
+        }
+
         connecter((error, connection) => {
             if (error) {
                 return res.status(500).json({ message: "Erreur de connexion à la base de données" });
@@ -230,7 +264,6 @@ const updateCategorie = async (req, res) => {
             // Si une nouvelle bannière est uploadée, l'inclure dans la mise à jour
             let query, values;
             if (req.file) {
-                const banniere_url = `/uploads/categories/${req.file.filename}`;
                 query = `
                     UPDATE categories 
                     SET nom = ?, description = ?, parent_id = ?, banniere_url = ?, updated_at = CURRENT_TIMESTAMP 

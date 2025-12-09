@@ -10,6 +10,7 @@ const {
     listallProduitpagine,
     listProduitsVedettes
 } = require('../controller/produit');
+const { searchProducts } = require('../controller/search');
 const authenticateToken = require('../middleware/auth');
 
 
@@ -24,5 +25,6 @@ router.post('/produit/filtreBycodebarre',authenticateToken, filtreBycodebarreori
 router.post('/produit/delete',authenticateToken, deleteProduit);
 router.post('/produit/updateProduit',updateProduit); // Utilisez `upload` ici aussi
 router.post('/produit/listall/paginate', listallProduitpagine);
+router.post('/produit/search', searchProducts); // Route de recherche publique
 
 module.exports = router;

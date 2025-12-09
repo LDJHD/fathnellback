@@ -27,7 +27,7 @@ const getPanier = async (req, res) => {
                 t.nom as taille_nom,
                 t.type as taille_type,
                 pi.texte_personnalisation,
-                (SELECT image_url FROM produit_images WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
+                (SELECT media_url FROM  produit_medias WHERE produit_id = p.id AND is_principal = 1 LIMIT 1) as image_principale
             FROM paniers pa
             JOIN panier_items pi ON pa.id = pi.panier_id
             JOIN produits p ON pi.produit_id = p.id

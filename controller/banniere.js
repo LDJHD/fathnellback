@@ -1,11 +1,17 @@
 const { connecter } = require("../bd/connect");
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const { uploadImagesToR2 } = require("../retourne");
 
 // Configuration multer spécifique pour les bannières
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/uploads/bannieres/');
+        const uploadDir = 'public/uploads/bannieres';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -31,7 +37,7 @@ const uploadBanniere = multer({
 
 // Ajouter une bannière
 const ajouterBanniere = (req, res) => {
-    uploadBanniere(req, res, function (err) {
+    uploadBanniere(req, res, async function (err) {
         if (err) {
             console.error('Erreur upload:', err);
             return res.status(400).json({ 
@@ -48,7 +54,21 @@ const ajouterBanniere = (req, res) => {
         }
 
         const { titre, description, ordre } = req.body;
-        const image_url = `/uploads/bannieres/${req.file.filename}`;
+        
+        // --- 📌 UPLOAD vers Cloudflare R2 ---
+        let urlsR2 = [];
+        try {
+            urlsR2 = await uploadImagesToR2([req.file], "dev/bannieres");
+        } catch (error) {
+            console.error("Erreur upload R2:", error);
+            return res.status(500).json({ 
+                success: false,
+                message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                error: error.message 
+            });
+        }
+
+        const image_url = urlsR2[0];
 
         connecter((error, connection) => {
             if (error) {
