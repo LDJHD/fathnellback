@@ -8,7 +8,8 @@ const {
     detailProduitScan,
     filtreBycodebarreorid,
     listallProduitpagine,
-    listProduitsVedettes
+    listProduitsVedettes,
+    deleteMedia
 } = require('../controller/produit');
 const { searchProducts } = require('../controller/search');
 const authenticateToken = require('../middleware/auth');
@@ -23,7 +24,8 @@ router.post('/produit/detailById', detailProduit);
 router.post('/produit/detailBycodebarre',authenticateToken, detailProduitScan);
 router.post('/produit/filtreBycodebarre',authenticateToken, filtreBycodebarreorid);
 router.post('/produit/delete',authenticateToken, deleteProduit);
-router.post('/produit/updateProduit',updateProduit); // Utilisez `upload` ici aussi
+router.post('/produit/updateProduit',authenticateToken, updateProduit); // Utilisez `upload` ici aussi
+router.post('/produit/deleteMedia',authenticateToken, deleteMedia); // Supprimer un média spécifique
 router.post('/produit/listall/paginate', listallProduitpagine);
 router.post('/produit/search', searchProducts); // Route de recherche publique
 

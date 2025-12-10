@@ -756,13 +756,17 @@ const listallProduitpagine = async (req, res) => {
 
 // Mettre à jour un produit
 const updateProduit = async (req, res) => {
-    upload(req, res, function(err) {
+    upload(req, res, async function(err) {
         if (err) {
             return res.status(400).json({ 
-                message: "Erreur lors de l'upload des images",
+                message: "Erreur lors de l'upload des médias",
                 error: err.message 
             });
         }
+
+        console.log("🔄 DEBUG - updateProduit appelé pour produit ID:", req.body.id);
+        console.log("🔄 DEBUG - Données reçues:", Object.keys(req.body));
+        console.log("🔄 DEBUG - Fichiers reçus:", req.files ? req.files.length : 0);
 
         const {
             id,
@@ -796,6 +800,20 @@ const updateProduit = async (req, res) => {
             return res.status(400).json({ 
                 message: "Le nom, le prix et la catégorie sont requis" 
             });
+        }
+
+        // --- 📌 UPLOAD nouveaux médias vers Cloudflare R2 ---
+        let urlsR2 = [];
+        if (req.files && req.files.length > 0) {
+            try {
+                urlsR2 = await uploadImagesToR2(req.files, "dev/produits");
+            } catch (error) {
+                console.error("Erreur upload R2:", error);
+                return res.status(500).json({ 
+                    message: "Erreur lors de l'envoi des fichiers vers Cloudflare R2",
+                    error: error.message 
+                });
+            }
         }
 
         connecter((error, connection) => {
@@ -841,8 +859,27 @@ const updateProduit = async (req, res) => {
 
                         const promises = [];
 
+                        // --- 📌 SUPPRIMER médias existants si spécifié ---
+                        const deletedMediaIds = req.body.deletedMediaIds ? JSON.parse(req.body.deletedMediaIds) : [];
+                        console.log("🗑️ DEBUG - deletedMediaIds reçus:", deletedMediaIds);
+                        console.log("🗑️ DEBUG - req.body.deletedMediaIds brut:", req.body.deletedMediaIds);
+                        if (deletedMediaIds.length > 0) {
+                            const deleteMediaQuery = `DELETE FROM produit_medias WHERE id IN (${deletedMediaIds.map(() => '?').join(',')}) AND produit_id = ?`;
+                            promises.push(new Promise((resolve, reject) => {
+                                connection.query(deleteMediaQuery, [...deletedMediaIds, id], (err, result) => {
+                                    if (err) {
+                                        console.error("Erreur suppression médias:", err);
+                                        reject(err);
+                                    } else {
+                                        console.log(`${result.affectedRows} médias supprimés`);
+                                        resolve(result);
+                                    }
+                                });
+                            }));
+                        }
+
                         // Ajouter nouveaux médias si fournis
-                        if (req.files && req.files.length > 0) {
+                        if (urlsR2.length > 0) {
                             // Récupérer le nombre de médias existants pour l'ordre
                             const getMediaCountQuery = `SELECT COUNT(*) as count FROM produit_medias WHERE produit_id = ?`;
                             
@@ -856,9 +893,9 @@ const updateProduit = async (req, res) => {
                                     const startOrder = countResult[0].count;
                                     const mediaPromises = [];
                                     
-                                    req.files.forEach((file, index) => {
+                                    urlsR2.forEach((url, index) => {
                                         // Déterminer le type de média
-                                        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(file.originalname);
+                                        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
                                         const typeMedia = isVideo ? 'video' : 'image';
                                         
                                         const insertMediaQuery = `
@@ -869,7 +906,7 @@ const updateProduit = async (req, res) => {
                                         mediaPromises.push(new Promise((resolveMedia, rejectMedia) => {
                                             connection.query(
                                                 insertMediaQuery,
-                                                [id, file.filename, typeMedia, startOrder === 0 && index === 0, startOrder + index + 1],
+                                                [id, url, typeMedia, startOrder === 0 && index === 0, startOrder + index + 1],
                                                 (err, result) => {
                                                     if (err) rejectMedia(err);
                                                     else resolveMedia(result);
@@ -982,7 +1019,7 @@ const updateProduit = async (req, res) => {
                                             id,
                                             nom,
                                             prix,
-                                            images: req.files ? req.files.map(f => f.filename) : []
+                                            medias: urlsR2
                                         }
                                     });
                                 });
@@ -1045,6 +1082,50 @@ const listProduitsVedettes = async (req, res) => {
     });
 };
 
+// Supprimer un média spécifique
+const deleteMedia = async (req, res) => {
+    const { mediaId, produitId } = req.body;
+
+    console.log("🗑️ DELETE MEDIA - ID média:", mediaId, "ID produit:", produitId);
+
+    if (!mediaId || !produitId) {
+        return res.status(400).json({ message: "L'ID du média et l'ID du produit sont requis" });
+    }
+
+    connecter((error, connection) => {
+        if (error) {
+            return res.status(500).json({ message: "Erreur de connexion à la base de données" });
+        }
+
+        // Supprimer le média en vérifiant qu'il appartient bien au produit
+        const deleteQuery = `DELETE FROM produit_medias WHERE id = ? AND produit_id = ?`;
+        
+        connection.query(deleteQuery, [mediaId, produitId], (err, result) => {
+            connection.end();
+            
+            if (err) {
+                console.error("Erreur lors de la suppression du média:", err);
+                return res.status(500).json({ 
+                    message: "Erreur lors de la suppression du média",
+                    error: err.message 
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: "Média non trouvé ou n'appartient pas à ce produit" });
+            }
+
+            console.log("✅ Média supprimé avec succès - ID:", mediaId);
+
+            res.status(200).json({
+                message: "Média supprimé avec succès",
+                mediaId,
+                produitId
+            });
+        });
+    });
+};
+
 module.exports = {
     ajouterProduit,
     listallProduit,
@@ -1054,5 +1135,6 @@ module.exports = {
     deleteProduit,
     updateProduit,
     listallProduitpagine,
-    listProduitsVedettes
+    listProduitsVedettes,
+    deleteMedia
 };

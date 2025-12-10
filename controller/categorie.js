@@ -270,6 +270,14 @@ const updateCategorie = async (req, res) => {
                     WHERE id = ?
                 `;
                 values = [nom, description, parent_id, banniere_url, id];
+            } else if (req.body.removeBanniere === 'true') {
+                // Supprimer la bannière si demandé
+                query = `
+                    UPDATE categories 
+                    SET nom = ?, description = ?, parent_id = ?, banniere_url = NULL, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `;
+                values = [nom, description, parent_id, id];
             } else {
                 query = `
                     UPDATE categories 
@@ -295,7 +303,7 @@ const updateCategorie = async (req, res) => {
 
                 res.status(200).json({
                     message: "Catégorie modifiée avec succès",
-                    banniere_url: req.file ? `/uploads/categories/${req.file.filename}` : undefined
+                    banniere_url: req.file ? banniere_url : undefined
                 });
             });
         });

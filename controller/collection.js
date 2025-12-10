@@ -242,6 +242,10 @@ const updateCollection = async (req, res) => {
             if (newImage) {
                 query = `UPDATE collections SET nom = ?, description = ?, image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
                 params = [nom, description, newImage, id];
+            } else if (req.body.removeImage === 'true') {
+                // Supprimer l'image si demandé
+                query = `UPDATE collections SET nom = ?, description = ?, image = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+                params = [nom, description, id];
             } else {
                 query = `UPDATE collections SET nom = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
                 params = [nom, description, id];
