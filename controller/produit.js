@@ -369,6 +369,7 @@ const listallProduit = async (req, res) => {
     const { 
         collection_id, 
         categorie_id, 
+        stock_status,
         personnalisable, 
         en_promo,
         prix_min,
@@ -394,6 +395,11 @@ const listallProduit = async (req, res) => {
         if (categorie_id) {
             whereClause += " AND p.categorie_id = ?";
             queryParams.push(categorie_id);
+        }
+
+        if (stock_status) {
+            whereClause += " AND p.stock_status = ?";
+            queryParams.push(stock_status);
         }
 
         if (personnalisable !== undefined) {
